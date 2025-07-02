@@ -1,3 +1,5 @@
+import { destroyWebSocketService } from './services/websocket.service';
+
 const API_URL = 'http://localhost:3000';
 
 export function getToken() {
@@ -10,6 +12,9 @@ export function setToken(token: string) {
 
 export function clearToken() {
   localStorage.removeItem('jwt');
+  
+  // Also destroy WebSocket service when clearing token
+  destroyWebSocketService();
 }
 
 async function apiFetch(path: string, options: RequestInit = {}) {

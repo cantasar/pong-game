@@ -37,3 +37,24 @@ export async function getUserByIdService(userId) {
     throw new Error(`Error finding user by ID: ${error.message}`);
   }
 }
+
+export async function getUsersByIdsService(userIds) {
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        id: {
+          in: userIds
+        }
+      },
+      select: {
+        id: true,
+        username: true,
+        createdAt: true
+      }
+    });
+
+    return users;
+  } catch (error) {
+    throw new Error(`Error finding users by IDs: ${error.message}`);
+  }
+}

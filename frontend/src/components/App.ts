@@ -2,6 +2,8 @@ import { getToken, getMe } from '../api';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 import { MainLayout } from './MainLayout';
+import { destroyWebSocketService } from '../services/websocket.service';
+import { chatStore } from '../services/chat.service';
 
 // Simple app state
 const state = {
@@ -48,6 +50,9 @@ async function handleLogin() {
   render(document.getElementById('app')!);
   
   try {
+    // Clear any previous chat data before login
+    chatStore.clear();
+    
     state.user = await getMe();
     state.isAuthenticated = true;
     state.screen = 'main';
@@ -61,6 +66,9 @@ async function handleLogin() {
 }
 
 function handleLogout() {
+  // Destroy WebSocket service before logout
+  destroyWebSocketService();
+  
   state.isAuthenticated = false;
   state.user = null;
   state.screen = 'login';
@@ -71,6 +79,9 @@ export function App(root: HTMLElement) {
   if (getToken()) {
     state.loading = true;
     render(root);
+    
+    // Clear chat data when app starts with existing token
+    chatStore.clear();
     
     getMe().then(user => {
       state.user = user;

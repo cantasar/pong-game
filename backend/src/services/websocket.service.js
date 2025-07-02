@@ -1,11 +1,17 @@
+import { getUsersByIdsService } from './user.service.js';
+
 const clients = new Map();
 
 export function addClient(userId, socket) {
   clients.set(parseInt(userId), socket);
+  // Broadcast user status change to all clients
+  broadcastUserStatusChange(parseInt(userId), true);
 }
 
 export function removeClient(userId) {
   clients.delete(parseInt(userId));
+  // Broadcast user status change to all clients
+  broadcastUserStatusChange(parseInt(userId), false);
 }
 
 export function getClient(userId) {
@@ -65,4 +71,70 @@ export function isUserOnline(userId) {
 
 export function getClientCount() {
   return clients.size;
-} 
+}
+
+// User status functions
+export async function broadcastUserStatusChange(userId, isOnline, username = null) {
+  try {
+    // Get username if not provided
+    if (!username) {
+      const users = await getUsersByIdsService([parseInt(userId)]);
+      username = users.length > 0 ? users[0].username : `User${userId}`;
+    }
+
+    const statusMessage = {
+      type: 'user_status',
+      userId: parseInt(userId),
+      username,
+      isOnline,
+      lastSeen: isOnline ? null : new Date().toISOString()
+    };
+
+    console.log(`📡 Broadcasting user status change:`, statusMessage);
+
+    // Send to all connected clients
+    clients.forEach((socket, connectedUserId) => {
+      if (socket && socket.readyState === 1) {
+        try {
+          socket.send(JSON.stringify(statusMessage));
+        } catch (error) {
+          console.error(`Error sending status update to user ${connectedUserId}:`, error);
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error in broadcastUserStatusChange:', error);
+  }
+}
+
+export async function broadcastUserList() {
+  try {
+    const onlineUserIds = getOnlineUsers();
+    const users = await getUsersByIdsService(onlineUserIds);
+    
+    const userListMessage = {
+      type: 'user_list',
+      users: users.map(user => ({
+        userId: user.id,
+        username: user.username,
+        isOnline: true,
+        lastSeen: null
+      }))
+    };
+
+    console.log(`📋 Broadcasting user list:`, userListMessage);
+
+    // Send to all connected clients
+    clients.forEach((socket, connectedUserId) => {
+      if (socket && socket.readyState === 1) {
+        try {
+          socket.send(JSON.stringify(userListMessage));
+        } catch (error) {
+          console.error(`Error sending user list to user ${connectedUserId}:`, error);
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error in broadcastUserList:', error);
+  }
+}

@@ -1,7 +1,9 @@
-import { webSocketService } from '../services/websocket.service';
+import { getWebSocketService } from '../services/websocket.service';
 import { chatStore } from '../services/chat.service';
 import { getMe } from '../api';
+import { userStatusService } from '../services/user-status.service';
 import type { ChatMessage, MessageHandler } from '../services/websocket.service';
+import type { UserStatusHandler } from '../services/user-status.service';
 
 interface CurrentUser {
   id: number;
@@ -12,6 +14,43 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
   let currentUser: CurrentUser | null = null;
   let friendId: number | null = selectedFriendId || null;
   let messageHandler: MessageHandler | null = null;
+  
+  // Get WebSocket service instance
+  const webSocketService = getWebSocketService();
+  
+  if (!webSocketService) {
+    console.error('WebSocket service not available');
+    const errorDiv = document.createElement('div');
+    errorDiv.innerHTML = '<div class="text-red-500 p-4">WebSocket service not available</div>';
+    return errorDiv;
+  }
+
+  // Function to get status indicator for friend
+  function getFriendStatusIndicator(friendId: number, webSocketConnected: boolean) {
+    if (!webSocketConnected) {
+      return {
+        html: `<div class="w-2 h-2 bg-red-500 rounded-full"></div>Disconnected`,
+        className: 'text-sm text-red-600 flex items-center gap-1'
+      };
+    }
+
+    const isOnline = userStatusService.isUserOnline(friendId);
+    return {
+      html: `<div class="w-2 h-2 ${isOnline ? 'bg-green-500' : 'bg-gray-400'} rounded-full"></div>${isOnline ? 'Online' : 'Offline'}`,
+      className: `text-sm ${isOnline ? 'text-green-600' : 'text-gray-500'} flex items-center gap-1`
+    };
+  }
+
+  // Function to update friend status in the header
+  function updateFriendStatus() {
+    const statusElement = modal.querySelector('#friend-status') as HTMLElement;
+    if (statusElement && friendId && webSocketService) {
+      const isWebSocketConnected = webSocketService.isConnected();
+      const status = getFriendStatusIndicator(friendId, isWebSocketConnected);
+      statusElement.innerHTML = status.html;
+      statusElement.className = status.className;
+    }
+  }
 
   // Create modal overlay
   const overlay = document.createElement('div');
@@ -93,7 +132,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
         }
       };
 
-      webSocketService.addHandler(messageHandler);
+      webSocketService?.addHandler(messageHandler);
       
       // Initial render
       renderChat();
@@ -118,9 +157,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
                class="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="${selectedFriend}" />
           <div>
             <h3 class="font-semibold text-gray-800">${selectedFriend}</h3>
-            <p class="text-sm flex items-center gap-1" id="connection-status">
-              <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
-              Connecting...
+            <p class="text-sm flex items-center gap-1" id="friend-status">
             </p>
           </div>
         </div>
@@ -209,6 +246,32 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
       closeBtn.addEventListener('click', onClose);
     }
 
+    // Set up user status handler
+    const statusHandler: UserStatusHandler = {
+      onUserStatusChange: (changedUserId: number, _isOnline: boolean) => {
+        if (changedUserId === friendId) {
+          updateFriendStatus();
+        }
+      },
+      onUserListUpdate: () => {
+        updateFriendStatus();
+      }
+    };
+
+    userStatusService.addHandler(statusHandler);
+
+    // Initial status update
+    updateFriendStatus();
+
+    // Clean up handler when modal is closed
+    const originalOnClose = onClose;
+    if (closeBtn && originalOnClose) {
+      closeBtn.addEventListener('click', () => {
+        userStatusService.removeHandler(statusHandler);
+        originalOnClose();
+      });
+    }
+
     // Message input and send button
     const messageInput = modal.querySelector('#message-input') as HTMLInputElement;
     const sendButton = modal.querySelector('#send-button') as HTMLButtonElement;
@@ -217,7 +280,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
       // Send message function
       const sendMessage = () => {
         const content = messageInput.value.trim();
-        if (!content || !friendId || !webSocketService.isConnected()) {
+        if (!content || !friendId || !webSocketService?.isConnected()) {
           return;
         }
 
@@ -229,7 +292,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
           </svg>
         `;
 
-        if (webSocketService.sendMessage(friendId, content)) {
+        if (webSocketService?.sendMessage(friendId, content)) {
           messageInput.value = '';
           
           // Add temporary message for instant feedback
@@ -257,7 +320,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
           }, 500);
         } else {
           // Show connection error and try to reconnect
-          console.log('❌ Failed to send message, connection status:', webSocketService.getConnectionStateText());
+          console.log('❌ Failed to send message, connection status:', webSocketService?.getConnectionStateText());
           
           // Reset button immediately on error
           sendButton.disabled = false;
@@ -270,7 +333,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
           // Show error message to user
           const errorDiv = document.createElement('div');
           errorDiv.className = 'bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm mt-2';
-          errorDiv.textContent = `Connection lost. Reconnecting... (${webSocketService.getConnectionStateText()})`;
+          errorDiv.textContent = `Connection lost. Reconnecting... (${webSocketService?.getConnectionStateText()})`;
           
           const chatContainer = modal.querySelector('#chat-messages');
           if (chatContainer) {
@@ -284,7 +347,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
           }
           
           // Try to force reconnect
-          webSocketService.forceReconnect();
+          webSocketService?.forceReconnect();
           updateConnectionStatus(false);
         }
       };
@@ -354,33 +417,16 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
 
-  function updateConnectionStatus(isConnected: boolean) {
-    const statusElement = modal.querySelector('#connection-status');
-    if (statusElement) {
-      const connectionState = webSocketService.getConnectionStateText();
-      
-      if (isConnected) {
-        statusElement.innerHTML = `
-          <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-          Online
-        `;
-        statusElement.className = 'text-sm text-green-600 flex items-center gap-1';
-      } else {
-        const isConnecting = connectionState === 'Connecting';
-        statusElement.innerHTML = `
-          <div class="w-2 h-2 ${isConnecting ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'} rounded-full"></div>
-          ${isConnecting ? 'Connecting...' : 'Disconnected'}
-        `;
-        statusElement.className = `text-sm ${isConnecting ? 'text-yellow-600' : 'text-red-600'} flex items-center gap-1`;
-      }
-    }
+  function updateConnectionStatus(_isConnected: boolean) {
+    // Update friend status instead of connection status
+    updateFriendStatus();
     updateSendButtonState();
   }
 
   function updateSendButtonState() {
     const sendButton = modal.querySelector('#send-button') as HTMLButtonElement;
     if (sendButton) {
-      sendButton.disabled = !webSocketService.isConnected();
+      sendButton.disabled = !webSocketService?.isConnected();
     }
   }
 
@@ -393,7 +439,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
   // Cleanup function
   function cleanup() {
     if (messageHandler) {
-      webSocketService.removeHandler(messageHandler);
+      webSocketService?.removeHandler(messageHandler);
       messageHandler = null;
     }
   }
@@ -428,7 +474,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
   });
 
   // Update connection status initially
-  updateConnectionStatus(webSocketService.isConnected());
+  updateConnectionStatus(webSocketService?.isConnected() ?? false);
 
   overlay.appendChild(modal);
   return overlay;

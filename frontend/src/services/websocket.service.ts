@@ -1,4 +1,7 @@
 import { getToken } from '../api';
+import { chatStore } from './chat.service';
+import { userStatusService } from './user-status.service';
+import type { UserStatus } from './user-status.service';
 
 export interface ChatMessage {
   from: number;
@@ -9,6 +12,19 @@ export interface ChatMessage {
   status?: 'sent' | 'delivered' | 'error';
 }
 
+export interface UserStatusMessage {
+  type: 'user_status';
+  userId: number;
+  username: string;
+  isOnline: boolean;
+  lastSeen?: string;
+}
+
+export interface UserListMessage {
+  type: 'user_list';
+  users: UserStatus[];
+}
+
 export interface MessageHandler {
   onMessage: (message: ChatMessage) => void;
   onError?: (error: any) => void;
@@ -17,7 +33,6 @@ export interface MessageHandler {
 }
 
 export class WebSocketService {
-  private static instance: WebSocketService | null = null;
   private ws: WebSocket | null = null;
   private handlers: MessageHandler[] = [];
   private reconnectAttempts = 0;
@@ -27,11 +42,6 @@ export class WebSocketService {
   private healthCheckInterval: number | null = null;
 
   constructor() {
-    // Prevent multiple instances
-    if (WebSocketService.instance) {
-      return WebSocketService.instance;
-    }
-    WebSocketService.instance = this;
     this.connect();
     this.startHealthCheck();
   }
@@ -63,12 +73,26 @@ export class WebSocketService {
 
       this.ws.onmessage = (event) => {
         try {
-          const message: ChatMessage = JSON.parse(event.data);
-          console.log('📨 WebSocket message received:', message);
-          this.handlers.forEach(handler => {
-            console.log('🔄 Calling message handler');
-            handler.onMessage(message);
-          });
+          const data = JSON.parse(event.data);
+          console.log('📨 WebSocket message received:', data);
+          
+          // Handle different message types
+          if (data.type === 'user_status') {
+            // User status update
+            console.log('👤 User status update:', data);
+            userStatusService.updateUserStatus(data.userId, data.username, data.isOnline, data.lastSeen);
+          } else if (data.type === 'user_list') {
+            // Initial user list or user list update
+            console.log('📋 User list update:', data);
+            userStatusService.updateUserList(data.users);
+          } else {
+            // Regular chat message
+            const message: ChatMessage = data;
+            this.handlers.forEach(handler => {
+              console.log('🔄 Calling message handler');
+              handler.onMessage(message);
+            });
+          }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }
@@ -171,6 +195,21 @@ export class WebSocketService {
       this.ws.close(1000, 'Manual disconnect');
       this.ws = null;
     }
+    
+    // Clear all handlers
+    this.handlers = [];
+    this.reconnectAttempts = 0;
+    this.isConnecting = false;
+  }
+
+  // Method to be called on logout
+  public logout() {
+    console.log('🔒 Logging out - closing WebSocket connection and clearing chat data');
+    this.disconnect();
+    
+    // Clear chat store and user status
+    chatStore.clear();
+    userStatusService.clear();
   }
 
   private startHealthCheck() {
@@ -212,5 +251,29 @@ export class WebSocketService {
   }
 }
 
-// Singleton instance
-export const webSocketService = new WebSocketService();
+// Global instance that will be managed by the app
+export let webSocketService: WebSocketService | null = null;
+
+// Helper functions to manage the WebSocket service
+export function initWebSocketService(): WebSocketService {
+  if (webSocketService) {
+    webSocketService.logout();
+  }
+  webSocketService = new WebSocketService();
+  return webSocketService;
+}
+
+export function getWebSocketService(): WebSocketService | null {
+  return webSocketService;
+}
+
+export function destroyWebSocketService(): void {
+  if (webSocketService) {
+    webSocketService.logout();
+    webSocketService = null;
+  }
+  
+  // Also clear chat store and user status as a safety measure
+  chatStore.clear();
+  userStatusService.clear();
+}

@@ -1,12 +1,26 @@
 import { getFriends, clearToken, sendFriendRequest, getFriendRequests, acceptOrRejectFriendRequest, getUserByUsername } from '../api';
+import { chatStore } from '../services/chat.service';
+import { userStatusService } from '../services/user-status.service';
+import type { UserStatusHandler } from '../services/user-status.service';
 
 export function ProfileCard(
   username: string = 'Username', 
+  userId?: number,
   onLogout?: () => void, 
   onFriendSelect?: (friend: any) => void
 ): HTMLElement {
   const card = document.createElement('div');
   card.className = 'bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200 flex flex-col h-full';
+
+  // Create status indicator function
+  function getStatusIndicator(isOnline: boolean) {
+    return `
+      <div class="text-sm ${isOnline ? 'text-green-600' : 'text-gray-500'} flex items-center gap-1">
+        <div class="w-2 h-2 ${isOnline ? 'bg-green-500' : 'bg-gray-400'} rounded-full"></div>
+        <div class="text-xs ${isOnline ? 'text-green-600' : 'text-gray-500'}">${isOnline ? 'Online' : 'Offline'}</div>
+      </div>
+    `;
+  }
 
   card.innerHTML = `
     <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
@@ -22,7 +36,7 @@ export function ProfileCard(
              class="w-12 h-12 rounded-full border-2 border-white shadow-sm" alt="Avatar" />
         <div>
           <div class="text-base font-semibold text-gray-800">${username}</div>
-          <div class="text-sm text-green-600 flex items-center gap-1">
+          <div id="user-status" class="text-sm text-green-600 flex items-center gap-1">
             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
             <div class="text-xs text-gray-500">Online</div>
           </div>
@@ -65,7 +79,12 @@ export function ProfileCard(
   // Event listeners
   const logoutBtn = card.querySelector('#logout-btn');
   logoutBtn?.addEventListener('click', () => {
+    // Clear token (this will also destroy WebSocket and clear chat store)
     clearToken();
+    
+    // Extra safety: also clear chat store directly
+    chatStore.clear();
+    
     if (onLogout) onLogout();
   });
 
@@ -96,12 +115,17 @@ export function ProfileCard(
         friends.forEach((friend: any) => {
           const friendDiv = document.createElement('div');
           friendDiv.className = 'flex items-center gap-3 p-3 rounded-lg hover:bg-white/80 transition-all cursor-pointer border border-transparent hover:border-blue-200';
+          
+          // Check if friend is online using user status service
+          const isOnline = userStatusService.isUserOnline(friend.id);
+          const statusIndicator = getStatusIndicator(isOnline);
+          
           friendDiv.innerHTML = `
             <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(friend.username)}" 
                  class="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="${friend.username}" />
             <div class="flex-1">
               <div class="text-sm font-medium text-gray-800">${friend.username}</div>
-              <div class="text-xs text-gray-500">Online</div>
+              ${statusIndicator}
             </div>
             <div>
               <button class="text-xs text-gray-500 hover:underline">Message</button>
@@ -249,6 +273,41 @@ export function ProfileCard(
 
   // Load friends by default
   loadFriends();
+
+  // Set up user status handler for current user
+  const statusHandler: UserStatusHandler = {
+    onUserStatusChange: (_changedUserId: number, _isOnline: boolean) => {
+      // Update friend list if any friend's status changed
+      if (friendsTab?.classList.contains('bg-blue-500')) {
+        loadFriends(); // Refresh friends list to show updated statuses
+      }
+    },
+    onUserListUpdate: (_users) => {
+      // Update friend list when user list is updated
+      if (friendsTab?.classList.contains('bg-blue-500')) {
+        loadFriends(); // Refresh friends list to show updated statuses
+      }
+    }
+  };
+
+  userStatusService.addHandler(statusHandler);
+
+  // Update current user status (always online when ProfileCard is active)
+  const userStatusElement = card.querySelector('#user-status');
+  if (userStatusElement) {
+    userStatusElement.innerHTML = getStatusIndicator(true);
+    
+    // If we have userId, update it in the user status service
+    if (userId) {
+      userStatusService.setUserOnline(userId, username);
+    }
+  }
+
+  // Clean up handler when component is removed (optional, but good practice)
+  // Note: This would need to be called manually when removing the component
+  (card as any).cleanup = () => {
+    userStatusService.removeHandler(statusHandler);
+  };
 
   return card;
 }

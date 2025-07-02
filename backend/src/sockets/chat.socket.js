@@ -1,7 +1,7 @@
 import prisma from '../db/client.js';
 import { isFriendService } from '../services/isFriend.service.js';
 import { sendMessageService } from '../services/chat.service.js';
-import { addClient, removeClient, broadcastMessage, isUserOnline } from '../services/websocket.service.js';
+import { addClient, removeClient, broadcastMessage, isUserOnline, broadcastUserList } from '../services/websocket.service.js';
 
 export default async function chatSocket(fastify) {
   fastify.get('/ws', { websocket: true }, async (connection, req) => {
@@ -24,6 +24,11 @@ export default async function chatSocket(fastify) {
       const userId = user.userId;
       console.log(`🔌 User ${userId} connected to WebSocket`);
       addClient(userId, connection);
+
+      // Send current user list to the newly connected user
+      setTimeout(() => {
+        broadcastUserList();
+      }, 100); // Small delay to ensure connection is established
       try {
         const unreadMessages = await prisma.message.findMany({
           where: {

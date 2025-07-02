@@ -3,7 +3,7 @@ import { GameArea } from './GameArea';
 import { Tournament } from './Tournament';
 import { GeneralChat } from './GeneralChat';
 import { PrivateChat } from './PrivateChat';
-import { webSocketService } from '../services/websocket.service';
+import { initWebSocketService } from '../services/websocket.service';
 import { chatStore } from '../services/chat.service';
 import { getMe } from '../api';
 import type { MessageHandler } from '../services/websocket.service';
@@ -11,6 +11,12 @@ import type { MessageHandler } from '../services/websocket.service';
 export function MainLayout(user: { username: string; id?: number }, onLogout?: () => void): HTMLElement {
   const container = document.createElement('div');
   container.className = 'w-full h-screen flex bg-gradient-to-br from-blue-50 via-white to-blue-100 overflow-hidden relative';
+
+  // Clear any previous chat data for safety (in case logout didn't work properly)
+  chatStore.clear();
+
+  // Initialize WebSocket service for this session
+  const webSocketService = initWebSocketService();
 
   // Selected friend state
   let selectedFriend: string | null = null;
@@ -160,7 +166,7 @@ export function MainLayout(user: { username: string; id?: number }, onLogout?: (
   window.addEventListener('beforeunload', handleUnload);
 
   // Profile card with friend selection callback
-  const profile = ProfileCard(user.username, onLogout, handleFriendSelect);
+  const profile = ProfileCard(user.username, user.id, onLogout, handleFriendSelect);
   leftSidebar.appendChild(profile);
 
   // Main content area - Full screen game
