@@ -15,10 +15,9 @@ export interface Friend {
 // Friend request types
 export interface FriendRequest {
   id: number;
-  fromUser: User;
-  toUser: User;
-  status: 'pending' | 'accepted' | 'rejected';
-  createdAt: string;
+  requester: User;
+  status?: 'pending' | 'accepted' | 'rejected';
+  createdAt?: string;
 }
 
 // API Response types

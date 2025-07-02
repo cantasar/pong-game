@@ -1,22 +1,35 @@
 import * as userService from '../services/user.service.js';
 
-export async function searchUsersController(request, reply) {
+export async function getUserByUsernameController(request, reply) {
   try {
-    const { username } = request.query;
+    const { username } = request.params;
     
     if (!username || username.trim() === '') {
-      return reply.code(400).send({ error: 'Username query parameter is required' });
+      return reply.code(400).send({ 
+        success: false,
+        error: 'Username parameter is required' 
+      });
     }
 
-    const users = await userService.searchUsersByUsernameService(username.trim());
+    const user = await userService.getUserByUsernameService(username.trim());
+    
+    if (!user) {
+      return reply.code(404).send({ 
+        success: false,
+        error: 'User not found' 
+      });
+    }
     
     return reply.code(200).send({ 
-      users,
-      count: users.length 
+      success: true,
+      data: user
     });
   } catch (error) {
-    console.error('Search users error:', error);
-    return reply.code(500).send({ error: error.message || 'Internal server error' });
+    console.error('Get user by username error:', error);
+    return reply.code(500).send({ 
+      success: false,
+      error: error.message || 'Internal server error' 
+    });
   }
 }
 
@@ -26,18 +39,30 @@ export async function getUserByIdController(request, reply) {
     const userId = parseInt(id);
     
     if (isNaN(userId)) {
-      return reply.code(400).send({ error: 'Invalid user ID' });
+      return reply.code(400).send({ 
+        success: false,
+        error: 'Invalid user ID' 
+      });
     }
 
     const user = await userService.getUserByIdService(userId);
     
     if (!user) {
-      return reply.code(404).send({ error: 'User not found' });
+      return reply.code(404).send({ 
+        success: false,
+        error: 'User not found' 
+      });
     }
     
-    return reply.code(200).send(user);
+    return reply.code(200).send({ 
+      success: true,
+      data: user
+    });
   } catch (error) {
     console.error('Get user by ID error:', error);
-    return reply.code(500).send({ error: error.message || 'Internal server error' });
+    return reply.code(500).send({ 
+      success: false,
+      error: error.message || 'Internal server error' 
+    });
   }
 }

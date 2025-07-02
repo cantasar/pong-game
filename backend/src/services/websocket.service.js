@@ -15,14 +15,18 @@ export function getClient(userId) {
 export function broadcastToUser(userId, message) {
     try{
         const receiverSocket = clients.get(parseInt(userId));
+        console.log(`🔍 User ${userId} socket status:`, receiverSocket ? `readyState=${receiverSocket.readyState}` : 'not found');
+        
         if (receiverSocket && receiverSocket.readyState === 1) {
             receiverSocket.send(JSON.stringify(message));
+            console.log(`✅ Message successfully sent to user ${userId}`);
             return true;
         } else {
+            console.log(`❌ Cannot send to user ${userId}: ${!receiverSocket ? 'socket not found' : `socket readyState=${receiverSocket.readyState} (not OPEN)`}`);
             return false;
         }
     }catch(error){
-        console.error('Error broadcasting to user:', error);
+        console.error(`❌ Error broadcasting to user ${userId}:`, error);
         return false;
     }
 }
@@ -52,6 +56,11 @@ export function broadcastMessage(senderId, receiverId, content, createdAt) {
 
 export function getOnlineUsers() {
   return Array.from(clients.keys());
+}
+
+export function isUserOnline(userId) {
+  const socket = clients.get(parseInt(userId));
+  return socket && socket.readyState === 1;
 }
 
 export function getClientCount() {

@@ -134,10 +134,10 @@ export function ProfileCard(
           requestDiv.className = 'bg-white rounded-lg p-3 border border-gray-200 shadow-sm mb-2';
           requestDiv.innerHTML = `
             <div class="flex items-center gap-3 mb-2">
-              <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(request.fromUser.username)}" 
-                   class="w-8 h-8 rounded-full border border-gray-300" alt="${request.fromUser.username}" />
+              <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(request.requester.username)}" 
+                   class="w-8 h-8 rounded-full border border-gray-300" alt="${request.requester.username}" />
               <div class="flex-1">
-                <div class="text-sm font-medium text-gray-800">${request.fromUser.username}</div>
+                <div class="text-sm font-medium text-gray-800">${request.requester.username}</div>
                 <div class="text-xs text-gray-500">wants to be friends</div>
               </div>
             </div>
@@ -151,6 +151,8 @@ export function ProfileCard(
             </div>
           `;
           
+
+
           const acceptBtn = requestDiv.querySelector('.accept-btn');
           const rejectBtn = requestDiv.querySelector('.reject-btn');
           
@@ -179,8 +181,10 @@ export function ProfileCard(
       } else {
         contentArea.innerHTML = '<div class="text-gray-400 text-center py-4 text-sm">No pending requests.</div>';
       }
-    } catch {
-      contentArea.innerHTML = '<div class="text-red-500 text-center py-4 text-sm">Failed to load requests.</div>';
+    } catch (error: any) {
+      console.error('Error loading friend requests:', error);
+      const errorMessage = error?.message || 'Failed to load requests.';
+      contentArea.innerHTML = `<div class="text-red-500 text-center py-4 text-sm">${errorMessage}</div>`;
     }
   }
 
@@ -211,6 +215,7 @@ export function ProfileCard(
 
       try {
         const user = await getUserByUsername(friendUsername);
+        console.log('User found:', user);
         await sendFriendRequest(user.id);
         result.className = 'text-sm text-center text-green-600';
         result.textContent = 'Friend request sent!';

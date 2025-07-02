@@ -256,13 +256,35 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
             `;
           }, 500);
         } else {
+          // Show connection error and try to reconnect
+          console.log('❌ Failed to send message, connection status:', webSocketService.getConnectionStateText());
+          
           // Reset button immediately on error
           sendButton.disabled = false;
           sendButton.innerHTML = `
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
             </svg>
           `;
+          
+          // Show error message to user
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm mt-2';
+          errorDiv.textContent = `Connection lost. Reconnecting... (${webSocketService.getConnectionStateText()})`;
+          
+          const chatContainer = modal.querySelector('#chat-messages');
+          if (chatContainer) {
+            chatContainer.appendChild(errorDiv);
+            // Remove error message after 3 seconds
+            setTimeout(() => {
+              if (errorDiv.parentNode) {
+                errorDiv.parentNode.removeChild(errorDiv);
+              }
+            }, 3000);
+          }
+          
+          // Try to force reconnect
+          webSocketService.forceReconnect();
           updateConnectionStatus(false);
         }
       };
@@ -335,6 +357,8 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
   function updateConnectionStatus(isConnected: boolean) {
     const statusElement = modal.querySelector('#connection-status');
     if (statusElement) {
+      const connectionState = webSocketService.getConnectionStateText();
+      
       if (isConnected) {
         statusElement.innerHTML = `
           <div class="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -342,11 +366,12 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
         `;
         statusElement.className = 'text-sm text-green-600 flex items-center gap-1';
       } else {
+        const isConnecting = connectionState === 'Connecting';
         statusElement.innerHTML = `
-          <div class="w-2 h-2 bg-red-500 rounded-full"></div>
-          Disconnected
+          <div class="w-2 h-2 ${isConnecting ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'} rounded-full"></div>
+          ${isConnecting ? 'Connecting...' : 'Disconnected'}
         `;
-        statusElement.className = 'text-sm text-red-600 flex items-center gap-1';
+        statusElement.className = `text-sm ${isConnecting ? 'text-yellow-600' : 'text-red-600'} flex items-center gap-1`;
       }
     }
     updateSendButtonState();

@@ -24,6 +24,7 @@ export class WebSocketService {
   private maxReconnectAttempts = 5;
   private reconnectTimeout: number | null = null;
   private isConnecting = false;
+  private healthCheckInterval: number | null = null;
 
   constructor() {
     // Prevent multiple instances
@@ -32,6 +33,7 @@ export class WebSocketService {
     }
     WebSocketService.instance = this;
     this.connect();
+    this.startHealthCheck();
   }
 
   private connect() {
@@ -113,7 +115,14 @@ export class WebSocketService {
 
   public sendMessage(receiverId: number, content: string) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket is not connected');
+      console.error('❌ WebSocket is not connected, current state:', this.ws?.readyState);
+      
+      // Try to reconnect if not connecting already
+      if (!this.isConnecting) {
+        console.log('🔄 Attempting to reconnect...');
+        this.connect();
+      }
+      
       return false;
     }
 
@@ -127,7 +136,7 @@ export class WebSocketService {
       console.log('📤 Message sent:', message);
       return true;
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
       return false;
     }
   }
@@ -153,10 +162,25 @@ export class WebSocketService {
       this.reconnectTimeout = null;
     }
     
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+    
     if (this.ws) {
       this.ws.close(1000, 'Manual disconnect');
       this.ws = null;
     }
+  }
+
+  private startHealthCheck() {
+    // Check connection every 30 seconds
+    this.healthCheckInterval = window.setInterval(() => {
+      if (!this.isConnected() && !this.isConnecting) {
+        console.log('🔄 Health check: Connection lost, attempting to reconnect...');
+        this.connect();
+      }
+    }, 30000);
   }
 
   public getConnectionState(): number {
@@ -165,6 +189,26 @@ export class WebSocketService {
 
   public isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  public forceReconnect() {
+    console.log('🔄 Force reconnecting WebSocket...');
+    this.disconnect();
+    setTimeout(() => {
+      this.connect();
+    }, 1000);
+  }
+
+  public getConnectionStateText(): string {
+    if (!this.ws) return 'Not initialized';
+    
+    switch (this.ws.readyState) {
+      case WebSocket.CONNECTING: return 'Connecting';
+      case WebSocket.OPEN: return 'Connected';
+      case WebSocket.CLOSING: return 'Closing';
+      case WebSocket.CLOSED: return 'Closed';
+      default: return 'Unknown';
+    }
   }
 }
 

@@ -1,7 +1,7 @@
 import prisma from '../db/client.js';
 import { isFriendService } from '../services/isFriend.service.js';
 import { sendMessageService } from '../services/chat.service.js';
-import { addClient, removeClient, broadcastMessage } from '../services/websocket.service.js';
+import { addClient, removeClient, broadcastMessage, isUserOnline } from '../services/websocket.service.js';
 
 export default async function chatSocket(fastify) {
   fastify.get('/ws', { websocket: true }, async (connection, req) => {
@@ -79,6 +79,10 @@ export default async function chatSocket(fastify) {
           
           const newMessage = await sendMessageService(parseInt(userId), parseInt(receiverId), content);
           console.log(`💾 Message saved to database:`, newMessage);
+          
+          // Check if receiver is online before broadcasting
+          const isReceiverOnline = isUserOnline(parseInt(receiverId));
+          console.log(`🌐 Receiver ${receiverId} online status: ${isReceiverOnline}`);
           
           broadcastMessage(parseInt(userId), parseInt(receiverId), content, newMessage.createdAt);
           console.log(`📡 Message broadcasted to users`);

@@ -124,9 +124,31 @@ export async function sendFriendRequest(targetId: number) {
 }
 
 export async function getFriendRequests() {
-  return apiFetch('/friends/requests', {
-    method: 'GET',
-  });
+  try {
+    const response = await apiFetch('/friends/requests', {
+      method: 'GET',
+    });
+    
+    // Backend'den dönen response yapısı: { incomingRequests: [...] }
+    if (response && response.incomingRequests) {
+      return response;
+    } else {
+      // Boş response durumu için varsayılan yapı
+      return { incomingRequests: [] };
+    }
+  } catch (error: any) {
+    console.error('Failed to get friend requests:', error);
+    
+    if (error?.status === 401) {
+      throw new Error('You need to be logged in to view friend requests.');
+    } else if (error?.message) {
+      throw error;
+    } else if (error?.error) {
+      throw new Error(error.error);
+    } else {
+      throw new Error('Failed to load friend requests. Please try again.');
+    }
+  }
 }
 
 export async function acceptOrRejectFriendRequest(id: number, accept: string) {
@@ -150,21 +172,27 @@ export async function getMessages(receiverId: number) {
   });
 }
 
-// Get user by username to find their ID
+// Get user by username
 export async function getUserByUsername(username: string) {
   if (!username || username.trim().length === 0) {
     throw new Error('Username is required');
   }
   
   try {
-    return await apiFetch(`/users/search?username=${encodeURIComponent(username.trim())}`, {
+    const response = await apiFetch(`/users/${encodeURIComponent(username.trim())}`, {
       method: 'GET',
     });
+    
+    if (response.success && response.data) {
+      return response.data;
+    } else {
+      throw new Error(response.error || 'User not found');
+    }
   } catch (error: any) {
-    if (error?.message) {
+    if (error?.success === false) {
+      throw new Error(error.error || 'Failed to get user');
+    } else if (error?.message) {
       throw error;
-    } else if (error?.error) {
-      throw new Error(error.error);
     } else {
       throw new Error('Failed to search for user');
     }
@@ -178,14 +206,20 @@ export async function getUserById(userId: number) {
   }
   
   try {
-    return await apiFetch(`/users/${userId}`, {
+    const response = await apiFetch(`/users/id/${userId}`, {
       method: 'GET',
     });
+    
+    if (response.success && response.data) {
+      return response.data;
+    } else {
+      throw new Error(response.error || 'User not found');
+    }
   } catch (error: any) {
-    if (error?.message) {
+    if (error?.success === false) {
+      throw new Error(error.error || 'Failed to get user');
+    } else if (error?.message) {
       throw error;
-    } else if (error?.error) {
-      throw new Error(error.error);
     } else {
       throw new Error('Failed to get user information');
     }
