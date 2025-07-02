@@ -28,19 +28,26 @@ export function broadcastToUser(userId, message) {
 }
 
 export function broadcastMessage(senderId, receiverId, content, createdAt) {
-    broadcastToUser(receiverId, {
-    from: senderId,
-    content,
-    createdAt,
-    isRead: true
-  });
-  
-  broadcastToUser(senderId, {
-    to: receiverId,
-    content,
-    createdAt,
-    status: 'sent'
-  });
+    console.log(`📡 Broadcasting message from ${senderId} to ${receiverId}`);
+    
+    // Send to receiver
+    const receiverResult = broadcastToUser(receiverId, {
+        from: senderId,
+        content,
+        createdAt,
+        isRead: true
+    });
+    console.log(`📨 Message sent to receiver (${receiverId}):`, receiverResult ? 'SUCCESS' : 'FAILED');
+    
+    // Send confirmation to sender (different format to avoid duplication)
+    const senderResult = broadcastToUser(senderId, {
+        type: 'message_sent',
+        to: receiverId,
+        content,
+        createdAt,
+        status: 'delivered'
+    });
+    console.log(`✅ Confirmation sent to sender (${senderId}):`, senderResult ? 'SUCCESS' : 'FAILED');
 }
 
 export function getOnlineUsers() {

@@ -42,3 +42,22 @@ export async function getUserByUsernameService(username) {
     throw new Error(`Error finding user: ${error.message}`);
   }
 }
+
+export async function getUserByIdService(userId) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId
+      },
+      select: {
+        id: true,
+        username: true,
+        createdAt: true
+      }
+    });
+
+    return user;
+  } catch (error) {
+    throw new Error(`Error finding user by ID: ${error.message}`);
+  }
+}

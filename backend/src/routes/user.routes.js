@@ -10,4 +10,9 @@ export default async function userRoutes(app, options) {
     handler: controller.searchUsersController
   });
 
+  app.get('/users/:id', {
+    preHandler: verifyJWT,
+    handler: controller.getUserByIdController
+  });
+
 }

@@ -21,11 +21,11 @@ export function ProfileCard(
         <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(username)}" 
              class="w-12 h-12 rounded-full border-2 border-white shadow-sm" alt="Avatar" />
         <div>
-          <p class="text-base font-semibold text-gray-800">${username}</p>
-          <p class="text-sm text-green-600 flex items-center gap-1">
+          <div class="text-base font-semibold text-gray-800">${username}</div>
+          <div class="text-sm text-green-600 flex items-center gap-1">
             <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-            Online
-          </p>
+            <div class="text-xs text-gray-500">Online</div>
+          </div>
         </div>
       </div>
       
@@ -46,9 +46,11 @@ export function ProfileCard(
         <button id="friends-tab" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors">
           Friends
         </button>
+        
         <button id="requests-tab" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors hover:bg-gray-300">
           Requests
         </button>
+        
         <button id="add-tab" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors hover:bg-gray-300">
           Add Friend
         </button>
@@ -101,6 +103,9 @@ export function ProfileCard(
               <div class="text-sm font-medium text-gray-800">${friend.username}</div>
               <div class="text-xs text-gray-500">Online</div>
             </div>
+            <div>
+              <button class="text-xs text-gray-500 hover:underline">Message</button>
+            </div>
           `;
           friendDiv.addEventListener('click', () => {
             if (onFriendSelect) onFriendSelect(friend);
@@ -149,6 +154,7 @@ export function ProfileCard(
           const acceptBtn = requestDiv.querySelector('.accept-btn');
           const rejectBtn = requestDiv.querySelector('.reject-btn');
           
+          // istegi kabul et
           acceptBtn?.addEventListener('click', async () => {
             try {
               await acceptOrRejectFriendRequest(request.id, 'accept');
@@ -158,6 +164,7 @@ export function ProfileCard(
             }
           });
           
+          // istegi reddet
           rejectBtn?.addEventListener('click', async () => {
             try {
               await acceptOrRejectFriendRequest(request.id, 'reject');
@@ -194,6 +201,7 @@ export function ProfileCard(
     const button = contentArea.querySelector('#send-btn') as HTMLButtonElement;
     const result = contentArea.querySelector('#add-result') as HTMLElement;
 
+    // add button
     button.addEventListener('click', async () => {
       const friendUsername = input.value.trim();
       if (!friendUsername) return;
@@ -216,17 +224,19 @@ export function ProfileCard(
     });
   }
 
-  // Tab event listeners
+  // friends menu
   friendsTab?.addEventListener('click', () => {
     setActiveTab(friendsTab);
     loadFriends();
   });
 
+  // requests menu
   requestsTab?.addEventListener('click', () => {
     setActiveTab(requestsTab);
     loadRequests();
   });
 
+  // add friend menu
   addTab?.addEventListener('click', () => {
     setActiveTab(addTab);
     showAddForm();

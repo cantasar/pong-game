@@ -3,6 +3,10 @@ import { GameArea } from './GameArea';
 import { Tournament } from './Tournament';
 import { GeneralChat } from './GeneralChat';
 import { PrivateChat } from './PrivateChat';
+import { webSocketService } from '../services/websocket.service';
+import { chatStore } from '../services/chat.service';
+import { getMe } from '../api';
+import type { MessageHandler } from '../services/websocket.service';
 
 export function MainLayout(user: { username: string; id?: number }, onLogout?: () => void): HTMLElement {
   const container = document.createElement('div');
@@ -10,7 +14,112 @@ export function MainLayout(user: { username: string; id?: number }, onLogout?: (
 
   // Selected friend state
   let selectedFriend: string | null = null;
+  let selectedFriendId: number | null = null;
   let privateChatModal: HTMLElement | null = null;
+  let messageHandler: MessageHandler | null = null;
+
+  // Initialize WebSocket message handling
+  const initializeMessageHandling = async () => {
+    try {
+      // Get current user info for message filtering
+      const currentUserResponse = await getMe();
+      const currentUserId = currentUserResponse.id || currentUserResponse.userId;
+
+      messageHandler = {
+        onMessage: async (message) => {
+          // Don't show notification for my own messages or confirmations
+          if (message.from === currentUserId || (message as any).type === 'message_sent') {
+            return;
+          }
+          
+          // Get friend name and ensure conversation exists
+          const friendName = await getFriendNameById(message.from);
+          
+          // Ensure conversation exists in chatStore
+          chatStore.createOrUpdateConversation(message.from, friendName);
+          
+          // Add message to store
+          chatStore.addMessage(message, currentUserId);
+          
+          // Show notification if chat is not open for this user
+          if (!privateChatModal || selectedFriend !== friendName) {
+            await showNotification(message);
+          }
+        },
+        onConnect: () => {
+          console.log('💬 Chat connected in MainLayout');
+        },
+        onDisconnect: () => {
+          console.log('💬 Chat disconnected in MainLayout');
+        }
+      };
+
+      webSocketService.addHandler(messageHandler);
+    } catch (error) {
+      console.error('Error initializing message handling:', error);
+    }
+  };
+
+  // Get friend name by ID (you might need to implement this based on your friends list)
+  const getFriendNameById = async (friendId: number): Promise<string> => {
+    try {
+      // Try to get from API
+      const { getUserById } = await import('../api');
+      const user = await getUserById(friendId);
+      return user.username || `User ${friendId}`;
+    } catch (error) {
+      console.error('Error getting friend name:', error);
+      return `User ${friendId}`;
+    }
+  };
+
+  // Show notification for new messages
+  const showNotification = async (message: any) => {
+    const friendName = await getFriendNameById(message.from);
+    
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm z-50 animate-slide-in-right';
+    notification.innerHTML = `
+      <div class="flex items-start gap-3">
+        <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=${message.from}" 
+             class="w-10 h-10 rounded-full border border-gray-200" />
+        <div class="flex-1 min-w-0">
+          <p class="font-medium text-gray-900 text-sm">${friendName}</p>
+          <p class="text-gray-600 text-sm truncate">${message.content}</p>
+        </div>
+        <button class="text-gray-400 hover:text-gray-600 text-xl leading-none" onclick="this.parentElement.parentElement.remove()">×</button>
+      </div>
+    `;
+
+    // Click to open chat
+    notification.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).tagName !== 'BUTTON') {
+        selectedFriend = friendName;
+        selectedFriendId = message.from;
+        openPrivateChat();
+        notification.remove();
+      }
+    });
+
+    document.body.appendChild(notification);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.remove();
+      }
+    }, 5000);
+  };
+
+  // Cleanup function
+  const cleanup = () => {
+    if (messageHandler) {
+      webSocketService.removeHandler(messageHandler);
+    }
+  };
+
+  // Initialize message handling
+  initializeMessageHandling();
 
   // Left sidebar - Profile and Friends
   const leftSidebar = document.createElement('div');
@@ -19,6 +128,7 @@ export function MainLayout(user: { username: string; id?: number }, onLogout?: (
   // Friend selection callback function
   const handleFriendSelect = (friend: any) => {
     selectedFriend = friend.username;
+    selectedFriendId = friend.id;
     openPrivateChat();
   };
 
@@ -27,9 +137,9 @@ export function MainLayout(user: { username: string; id?: number }, onLogout?: (
     // Close existing modal if open
     closePrivateChat();
     
-    if (selectedFriend) {
-      // Create new private chat modal
-      privateChatModal = PrivateChat(selectedFriend, closePrivateChat);
+    if (selectedFriend && selectedFriendId) {
+      // Create new private chat modal with both username and ID
+      privateChatModal = PrivateChat(selectedFriend, selectedFriendId, closePrivateChat);
       document.body.appendChild(privateChatModal);
     }
   };
@@ -41,6 +151,13 @@ export function MainLayout(user: { username: string; id?: number }, onLogout?: (
       privateChatModal = null;
     }
   };
+
+  // Cleanup when component unmounts
+  const handleUnload = () => {
+    cleanup();
+  };
+
+  window.addEventListener('beforeunload', handleUnload);
 
   // Profile card with friend selection callback
   const profile = ProfileCard(user.username, onLogout, handleFriendSelect);

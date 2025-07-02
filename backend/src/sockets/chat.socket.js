@@ -56,21 +56,35 @@ export default async function chatSocket(fastify) {
       connection.on('message', async messageRaw => {
         try {
           const { receiverId, content } = JSON.parse(messageRaw.toString());
+          console.log(`📨 Message received from user ${userId} to user ${receiverId}: "${content}"`);
+          
           const friend = await isFriendService(parseInt(userId), parseInt(receiverId));
-          console.log('\n\nfriend', friend, '\n\n');
+          console.log(`🤝 Friend check result:`, friend);
+          
           if (!friend) {
-            console.error('User is not a friend');
+            console.error('❌ User is not a friend');
+            connection.send(JSON.stringify({
+              error: 'User is not a friend'
+            }));
             return;
           }
+          
           if (!receiverId || !content) {
-            console.error('Invalid message format');
+            console.error('❌ Invalid message format');
+            connection.send(JSON.stringify({
+              error: 'Invalid message format'
+            }));
             return;
           }
+          
           const newMessage = await sendMessageService(parseInt(userId), parseInt(receiverId), content);
+          console.log(`💾 Message saved to database:`, newMessage);
+          
           broadcastMessage(parseInt(userId), parseInt(receiverId), content, newMessage.createdAt);
+          console.log(`📡 Message broadcasted to users`);
 
         } catch (err) {
-          console.error('Error processing message:', err);
+          console.error('❌ Error processing message:', err);
           connection.send(JSON.stringify({
             error: 'Failed to send message'
           }));

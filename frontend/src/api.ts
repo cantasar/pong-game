@@ -170,3 +170,24 @@ export async function getUserByUsername(username: string) {
     }
   }
 }
+
+// Get user by ID
+export async function getUserById(userId: number) {
+  if (!userId || isNaN(userId)) {
+    throw new Error('Invalid user ID');
+  }
+  
+  try {
+    return await apiFetch(`/users/${userId}`, {
+      method: 'GET',
+    });
+  } catch (error: any) {
+    if (error?.message) {
+      throw error;
+    } else if (error?.error) {
+      throw new Error(error.error);
+    } else {
+      throw new Error('Failed to get user information');
+    }
+  }
+}
