@@ -1,109 +1,111 @@
+// Simple interface for user status
 export interface UserStatus {
   userId: number;
   username: string;
   isOnline: boolean;
-  lastSeen?: string;
 }
 
-export interface UserStatusHandler {
-  onUserStatusChange: (userId: number, isOnline: boolean) => void;
-  onUserListUpdate?: (users: UserStatus[]) => void;
-}
+// Simple callback for status changes
+export type StatusChangeCallback = (userId: number, isOnline: boolean) => void;
 
 class UserStatusService {
-  private userStatuses = new Map<number, UserStatus>();
-  private handlers: UserStatusHandler[] = [];
-
-  // Get user status
-  getUserStatus(userId: number): UserStatus | null {
-    return this.userStatuses.get(userId) || null;
-  }
+  private onlineUsers = new Set<number>();
+  private usernames = new Map<number, string>();
+  private callbacks: StatusChangeCallback[] = [];
 
   // Check if user is online
-  isUserOnline(userId: number): boolean {
-    const status = this.userStatuses.get(userId);
-    return status?.isOnline || false;
+  isOnline(userId: number): boolean {
+    return this.onlineUsers.has(userId);
   }
 
-  // Update user status
-  updateUserStatus(userId: number, username: string, isOnline: boolean, lastSeen?: string) {
-    const currentStatus = this.userStatuses.get(userId);
-    const wasOnline = currentStatus?.isOnline || false;
+  // Get username for user
+  getUsername(userId: number): string {
+    return this.usernames.get(userId) || `User${userId}`;
+  }
+
+  // Set user online
+  setOnline(userId: number, username: string) {
+    const wasOnline = this.onlineUsers.has(userId);
+    this.onlineUsers.add(userId);
+    this.usernames.set(userId, username);
     
-    const newStatus: UserStatus = {
-      userId,
-      username,
-      isOnline,
-      lastSeen: lastSeen || (isOnline ? undefined : new Date().toISOString())
-    };
-
-    this.userStatuses.set(userId, newStatus);
-
-    // Notify handlers if status changed
-    if (wasOnline !== isOnline) {
-      this.handlers.forEach(handler => {
-        handler.onUserStatusChange(userId, isOnline);
-      });
+    console.log(`👤 User ${username} (${userId}) is now ONLINE`);
+    
+    if (!wasOnline) {
+      this.notifyCallbacks(userId, true);
     }
   }
 
   // Set user offline
-  setUserOffline(userId: number) {
-    const status = this.userStatuses.get(userId);
-    if (status && status.isOnline) {
-      this.updateUserStatus(userId, status.username, false);
+  setOffline(userId: number) {
+    const wasOnline = this.onlineUsers.has(userId);
+    const username = this.getUsername(userId);
+    this.onlineUsers.delete(userId);
+    
+    console.log(`👤 User ${username} (${userId}) is now OFFLINE`);
+    
+    if (wasOnline) {
+      this.notifyCallbacks(userId, false);
     }
   }
 
-  // Set user online
-  setUserOnline(userId: number, username: string) {
-    this.updateUserStatus(userId, username, true);
+  // Update all online users from server
+  updateOnlineUsers(users: UserStatus[]) {
+    // Clear and rebuild
+    this.onlineUsers.clear();
+    this.usernames.clear();
+    
+    users.forEach(user => {
+      if (user.isOnline) {
+        this.onlineUsers.add(user.userId);
+      }
+      this.usernames.set(user.userId, user.username);
+    });
+
+    // Notify all callbacks for all users
+    users.forEach(user => {
+      this.notifyCallbacks(user.userId, user.isOnline);
+    });
+  }
+
+  // Add callback for status changes
+  addCallback(callback: StatusChangeCallback) {
+    if (!this.callbacks.includes(callback)) {
+      this.callbacks.push(callback);
+    }
+  }
+
+  // Remove callback
+  removeCallback(callback: StatusChangeCallback) {
+    const index = this.callbacks.indexOf(callback);
+    if (index > -1) {
+      this.callbacks.splice(index, 1);
+    }
+  }
+
+  // Clear all data
+  clear() {
+    this.onlineUsers.clear();
+    this.usernames.clear();
+    this.callbacks = [];
   }
 
   // Get all online users
   getOnlineUsers(): UserStatus[] {
-    return Array.from(this.userStatuses.values()).filter(status => status.isOnline);
+    return Array.from(this.onlineUsers).map(userId => ({
+      userId,
+      username: this.getUsername(userId),
+      isOnline: true
+    }));
   }
 
-  // Get all users
-  getAllUsers(): UserStatus[] {
-    return Array.from(this.userStatuses.values());
-  }
-
-  // Add status change handler
-  addHandler(handler: UserStatusHandler) {
-    if (!this.handlers.includes(handler)) {
-      this.handlers.push(handler);
-    }
-  }
-
-  // Remove status change handler
-  removeHandler(handler: UserStatusHandler) {
-    const index = this.handlers.indexOf(handler);
-    if (index > -1) {
-      this.handlers.splice(index, 1);
-    }
-  }
-
-  // Clear all statuses (for logout)
-  clear() {
-    this.userStatuses.clear();
-    this.handlers = [];
-  }
-
-  // Update user list from server
-  updateUserList(users: UserStatus[]) {
-    // Clear existing statuses
-    this.userStatuses.clear();
-    
-    // Add new statuses
-    users.forEach(user => {
-      this.userStatuses.set(user.userId, user);
-    });
-
-    // Notify handlers
-    this.handlers.forEach(handler => {
-      handler.onUserListUpdate?.(users);
+  private notifyCallbacks(userId: number, isOnline: boolean) {
+    this.callbacks.forEach(callback => {
+      try {
+        callback(userId, isOnline);
+      } catch (error) {
+        console.error('Error in status callback:', error);
+      }
     });
   }
 }

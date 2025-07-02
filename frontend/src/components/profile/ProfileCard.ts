@@ -1,7 +1,7 @@
 import { getFriends, sendFriendRequest, getFriendRequests, acceptOrRejectFriendRequest, getUserByUsername } from '../../lib/friends-api';
 import { clearToken } from '../../lib/auth-api';
-import { userStatusService } from '../../lib/user-status.service';
-import type { UserStatusHandler } from '../../lib/user-status.service';
+import { getAvatarUrl } from '../../lib/avatar';
+import { createStatusIndicator, createStatusText } from '../../lib/status-indicator';
 
 export function ProfileCard(
   username: string = 'Username',
@@ -13,82 +13,43 @@ export function ProfileCard(
 
   // State for the current view
   let currentView = 'friends'; // 'friends', 'requests', 'add'
-  let statusHandler: UserStatusHandler | null = null;
-
-  function getStatusIndicator(isOnline: boolean) {
-    return `<div class="w-3 h-3 ${isOnline ? 'bg-green-500' : 'bg-gray-400'} rounded-full border-2 border-white"></div>`;
-  }
 
   function renderHeader() {
     return `
-      <div class="p-6 border-b border-gray-100 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div class="p-5 bg-gradient-to-br from-slate-50 to-blue-50">
         <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="3" y="5" width="2" height="14" rx="1"/>
-                <rect x="19" y="5" width="2" height="14" rx="1"/>
-                <circle cx="12" cy="12" r="2"/>
-              </svg>
-            </div>
-            <h2 class="text-xl font-bold text-gray-900 tracking-wide">PONG PLAYER</h2>
-          </div>
-          <button id="logout-btn" class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-500 hover:bg-red-600 text-white transition-all duration-200 shadow-sm hover:shadow-md">
+          <h2 class="text-lg font-semibold text-slate-700">Profile</h2>
+          <button id="logout-btn" class="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-600 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7"/>
             </svg>
           </button>
         </div>
         
-        <div class="flex flex-col items-center mb-6">
-          <div class="relative mb-4">
-            <div class="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-xl bg-gradient-to-br from-blue-500 to-purple-600 p-1">
-              <div class="w-full h-full rounded-full overflow-hidden bg-white">
-                <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=6366f1&color=ffffff&size=72&bold=true" 
-                     alt="${username}" class="w-full h-full object-cover" />
-              </div>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="relative">
+            <div class="w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border-2 border-white">
+              <img src="${getAvatarUrl(username)}" 
+                   alt="${username}" class="w-full h-full object-cover" />
             </div>
-            <div id="user-status" class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-3 border-white shadow-lg flex items-center justify-center">
-              <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-            </div>
+            <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white"></div>
           </div>
-          <div class="text-xl font-bold text-gray-900 mb-1">${username}</div>
-          <div class="text-sm text-green-600 font-medium flex items-center gap-1">
-            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span>Online & Ready</span>
+          <div>
+            <div class="font-semibold text-slate-800">${username}</div>
+            <div class="text-sm text-slate-500">Online</div>
           </div>
         </div>
         
-        <div class="bg-white/60 backdrop-blur-sm rounded-2xl p-4 border border-white/20 shadow-sm">
-          <div class="grid grid-cols-3 gap-4 text-center">
-            <div class="space-y-1">
-              <div class="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">12</div>
-              <div class="text-xs text-gray-600 uppercase tracking-wide font-medium">Wins</div>
-              <div class="w-full bg-gray-200 rounded-full h-1">
-                <div class="bg-gradient-to-r from-green-500 to-emerald-500 h-1 rounded-full" style="width: 60%"></div>
-              </div>
+        <div class="bg-white/70 rounded-xl p-3 border border-slate-200/50">
+          <div class="grid grid-cols-2 gap-3 text-center">
+            <div>
+              <div class="text-lg font-semibold text-emerald-600">12</div>
+              <div class="text-xs text-slate-500">Wins</div>
             </div>
-            <div class="space-y-1">
-              <div class="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">8</div>
-              <div class="text-xs text-gray-600 uppercase tracking-wide font-medium">Losses</div>
-              <div class="w-full bg-gray-200 rounded-full h-1">
-                <div class="bg-gradient-to-r from-red-500 to-pink-500 h-1 rounded-full" style="width: 40%"></div>
-              </div>
+            <div>
+              <div class="text-lg font-semibold text-rose-500">8</div>
+              <div class="text-xs text-slate-500">Losses</div>
             </div>
-            <div class="space-y-1">
-              <div class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">60%</div>
-              <div class="text-xs text-gray-600 uppercase tracking-wide font-medium">Win Rate</div>
-              <div class="w-full bg-gray-200 rounded-full h-1">
-                <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-1 rounded-full" style="width: 60%"></div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
-            <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-            </svg>
-            <span class="font-medium">Rank: Pong Master</span>
           </div>
         </div>
       </div>
@@ -97,15 +58,15 @@ export function ProfileCard(
 
   function renderNavigation() {
     return `
-      <div class="px-6 py-4 border-b border-gray-100">
-        <div class="flex gap-1 bg-gray-50 rounded-lg p-1">
-          <button id="nav-friends" class="flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${currentView === 'friends' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}">
+      <div class="px-4 py-3 border-b border-slate-100">
+        <div class="flex gap-1 bg-slate-50 rounded-lg p-1">
+          <button id="nav-friends" class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${currentView === 'friends' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}">
             Friends
           </button>
-          <button id="nav-requests" class="flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${currentView === 'requests' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}">
+          <button id="nav-requests" class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${currentView === 'requests' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}">
             Requests
           </button>
-          <button id="nav-add" class="flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${currentView === 'add' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}">
+          <button id="nav-add" class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${currentView === 'add' ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}">
             Add
           </button>
         </div>
@@ -117,30 +78,30 @@ export function ProfileCard(
     switch (currentView) {
       case 'friends':
         return `
-          <div id="friends-content" class="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-            <div class="text-center text-gray-500 text-sm py-8">Loading friends...</div>
+          <div id="friends-content" class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+            <div class="text-center text-slate-400 text-sm py-6">Loading friends...</div>
           </div>
         `;
       case 'requests':
         return `
-          <div id="requests-content" class="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-            <div class="text-center text-gray-500 text-sm py-8">Loading requests...</div>
+          <div id="requests-content" class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+            <div class="text-center text-slate-400 text-sm py-6">Loading requests...</div>
           </div>
         `;
       case 'add':
         return `
-          <div id="add-content" class="flex-1 p-6">
-            <div class="space-y-4">
+          <div id="add-content" class="flex-1 p-4">
+            <div class="space-y-3">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-3">Add New Friend</label>
+                <label class="block text-sm font-medium text-slate-600 mb-2">Add Friend</label>
                 <div class="space-y-3">
                   <input type="text" id="username-input" placeholder="Enter username" 
-                         class="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
-                  <button id="send-request-btn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-                    Send Friend Request
+                         class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all">
+                  <button id="send-request-btn" class="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors">
+                    Send Request
                   </button>
                 </div>
-                <div id="add-friend-message" class="mt-3 text-sm"></div>
+                <div id="add-friend-message" class="mt-2 text-sm hidden"></div>
               </div>
             </div>
           </div>
@@ -164,52 +125,46 @@ export function ProfileCard(
       const friends = await getFriends();
 
       if (friends.length === 0) {
-        friendsContent.innerHTML = '<div class="text-center text-gray-500 text-sm py-8">No friends yet</div>';
+        friendsContent.innerHTML = '<div class="text-center text-slate-400 text-sm py-6">No friends yet</div>';
         return;
       }
 
-      // Set up status handler
-      if (!statusHandler) {
-        statusHandler = {
-          onUserStatusChange: (userId: number, isOnline: boolean) => {
-            const friendElement = friendsContent.querySelector(`[data-friend-id="${userId}"]`);
-            if (friendElement) {
-              const statusIndicator = friendElement.querySelector('.status-indicator');
-              if (statusIndicator) {
-                statusIndicator.innerHTML = getStatusIndicator(isOnline);
-              }
-              const statusText = friendElement.querySelector('.status-text');
-              if (statusText) {
-                statusText.textContent = isOnline ? 'online' : 'offline';
-              }
-            }
-          }
-        };
-        userStatusService.addHandler(statusHandler);
-      }
-
       friendsContent.innerHTML = friends.map((friend: any) => `
-        <div class="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors group" data-friend-id="${friend.id}">
+        <div class="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors group friend-item" data-friend-id="${friend.id}">
           <div class="relative">
-            <div class="w-10 h-10 rounded-full overflow-hidden border border-gray-200">
-              <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(friend.username)}&background=random&color=ffffff&size=40&bold=true" 
+            <div class="w-9 h-9 rounded-full overflow-hidden border border-slate-200">
+              <img src="${getAvatarUrl(friend.username)}" 
                    alt="${friend.username}" class="w-full h-full object-cover" />
             </div>
-            <div class="absolute -bottom-0.5 -right-0.5 status-indicator">
-              ${getStatusIndicator(friend.status === 'online')}
-            </div>
+            <div class="absolute -bottom-0.5 -right-0.5 status-indicator-${friend.id}"></div>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="font-medium text-gray-900 text-sm truncate">${friend.username}</div>
-            <div class="text-xs text-gray-500 status-text">${friend.status || 'offline'}</div>
+            <div class="font-medium text-slate-700 text-sm truncate">${friend.username}</div>
+            <div class="text-xs text-slate-400 status-text-${friend.id}"></div>
           </div>
-          <div class="text-gray-400 group-hover:text-gray-600 transition-colors">
+          <div class="text-slate-300 group-hover:text-slate-400 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
           </div>
         </div>
       `).join('');
+
+      // Add status indicators and text for each friend
+      friends.forEach((friend: any) => {
+        const statusIndicatorContainer = friendsContent.querySelector(`.status-indicator-${friend.id}`);
+        const statusTextContainer = friendsContent.querySelector(`.status-text-${friend.id}`);
+        
+        if (statusIndicatorContainer) {
+          const indicator = createStatusIndicator(friend.id, 'small');
+          statusIndicatorContainer.appendChild(indicator);
+        }
+        
+        if (statusTextContainer) {
+          const statusText = createStatusText(friend.id);
+          statusTextContainer.appendChild(statusText);
+        }
+      });
 
       // Add click listeners
       friendsContent.querySelectorAll('[data-friend-id]').forEach(element => {
@@ -224,7 +179,7 @@ export function ProfileCard(
 
     } catch (error) {
       console.error('Error loading friends:', error);
-      friendsContent.innerHTML = '<div class="text-center text-red-500 text-sm py-4">Error loading friends</div>';
+      friendsContent.innerHTML = '<div class="text-center text-rose-500 text-sm py-4">Error loading friends</div>';
     }
   }
 
@@ -236,31 +191,31 @@ export function ProfileCard(
       const requests = await getFriendRequests();
 
       if (requests.length === 0) {
-        requestsContent.innerHTML = '<div class="text-center text-gray-500 text-sm py-8">No requests</div>';
+        requestsContent.innerHTML = '<div class="text-center text-slate-400 text-sm py-6">No requests</div>';
         return;
       }
 
       requestsContent.innerHTML = requests.map((request: any) => `
-        <div class="p-4 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
+        <div class="p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3 flex-1 min-w-0">
-              <div class="w-10 h-10 rounded-full overflow-hidden border border-gray-200">
-                <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(request.requester.username)}&background=random&color=ffffff&size=40&bold=true" 
+              <div class="w-9 h-9 rounded-full overflow-hidden border border-slate-200">
+                <img src="${getAvatarUrl(request.requester.username)}" 
                      alt="${request.requester.username}" class="w-full h-full object-cover" />
               </div>
               <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900 text-sm truncate">${request.requester.username}</div>
-                <div class="text-xs text-gray-500">wants to be friends</div>
+                <div class="font-medium text-slate-700 text-sm truncate">${request.requester.username}</div>
+                <div class="text-xs text-slate-400">wants to be friends</div>
               </div>
             </div>
             <div class="flex gap-2">
-              <button class="accept-btn w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors" data-request-id="${request.id}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button class="accept-btn w-7 h-7 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-full flex items-center justify-center transition-colors" data-request-id="${request.id}">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
               </button>
-              <button class="reject-btn w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors" data-request-id="${request.id}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button class="reject-btn w-7 h-7 bg-rose-100 hover:bg-rose-200 text-rose-600 rounded-full flex items-center justify-center transition-colors" data-request-id="${request.id}">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
               </button>
@@ -301,7 +256,7 @@ export function ProfileCard(
 
     } catch (error) {
       console.error('Error loading friend requests:', error);
-      requestsContent.innerHTML = '<div class="text-center text-red-500 text-sm py-4">Error loading</div>';
+      requestsContent.innerHTML = '<div class="text-center text-rose-500 text-sm py-4">Error loading</div>';
     }
   }
 
@@ -326,15 +281,15 @@ export function ProfileCard(
     try {
       const user = await getUserByUsername(username);
       await sendFriendRequest(user.id);
-      showMessage('Friend request sent successfully!', 'success');
+      showMessage('Friend request sent!', 'success');
       usernameInput.value = '';
     } catch (error: any) {
-      showMessage(error.message || 'Error sending friend request', 'error');
+      showMessage(error.message || 'Error sending request', 'error');
     } finally {
       // Re-enable button
       if (sendBtn) {
         sendBtn.disabled = false;
-        sendBtn.textContent = 'Send Friend Request';
+        sendBtn.textContent = 'Send Request';
       }
     }
   }
@@ -344,7 +299,7 @@ export function ProfileCard(
     if (!messageDiv) return;
 
     messageDiv.textContent = text;
-    messageDiv.className = `mt-2 text-sm ${type === 'success' ? 'text-green-600' : 'text-red-600'}`;
+    messageDiv.className = `mt-2 text-sm ${type === 'success' ? 'text-emerald-600' : 'text-rose-600'}`;
     messageDiv.classList.remove('hidden');
 
     // Auto hide after 3 seconds
@@ -409,9 +364,7 @@ export function ProfileCard(
 
   // Cleanup function
   const cleanup = () => {
-    if (statusHandler) {
-      userStatusService.removeHandler(statusHandler);
-    }
+    // Cleanup will be handled automatically by status indicators
   };
 
   window.addEventListener('beforeunload', cleanup);

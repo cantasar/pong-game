@@ -1,7 +1,6 @@
 import { getToken } from './api';
 import { chatStore } from './chat.service';
 import { userStatusService } from './user-status.service';
-import type { UserStatus } from './user-status.service';
 
 export interface ChatMessage {
   from: number;
@@ -10,19 +9,6 @@ export interface ChatMessage {
   createdAt: string;
   isRead?: boolean;
   status?: 'sent' | 'delivered' | 'error';
-}
-
-export interface UserStatusMessage {
-  type: 'user_status';
-  userId: number;
-  username: string;
-  isOnline: boolean;
-  lastSeen?: string;
-}
-
-export interface UserListMessage {
-  type: 'user_list';
-  users: UserStatus[];
 }
 
 export interface MessageHandler {
@@ -39,11 +25,9 @@ export class WebSocketService {
   private maxReconnectAttempts = 5;
   private reconnectTimeout: number | null = null;
   private isConnecting = false;
-  private healthCheckInterval: number | null = null;
 
   constructor() {
     this.connect();
-    this.startHealthCheck();
   }
 
   private connect() {
@@ -61,11 +45,10 @@ export class WebSocketService {
     }
 
     try {
-      // Backend WebSocket endpoint'i /ws olarak tanımlı
       this.ws = new WebSocket('ws://localhost:3000/ws', token);
       
       this.ws.onopen = () => {
-        console.log('✅ WebSocket connected');
+        console.log('✅ WebSocket connected successfully');
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.handlers.forEach(handler => handler.onConnect?.());
@@ -76,20 +59,22 @@ export class WebSocketService {
           const data = JSON.parse(event.data);
           console.log('📨 WebSocket message received:', data);
           
-          // Handle different message types
           if (data.type === 'user_status') {
-            // User status update
-            console.log('👤 User status update:', data);
-            userStatusService.updateUserStatus(data.userId, data.username, data.isOnline, data.lastSeen);
+            // Single user status update
+            console.log(`📡 Received user status update:`, data);
+            if (data.isOnline) {
+              userStatusService.setOnline(data.userId, data.username);
+            } else {
+              userStatusService.setOffline(data.userId);
+            }
           } else if (data.type === 'user_list') {
-            // Initial user list or user list update
-            console.log('📋 User list update:', data);
-            userStatusService.updateUserList(data.users);
+            // Full user list update
+            console.log(`📋 Received user list update:`, data);
+            userStatusService.updateOnlineUsers(data.users);
           } else {
             // Regular chat message
             const message: ChatMessage = data;
             this.handlers.forEach(handler => {
-              console.log('🔄 Calling message handler');
               handler.onMessage(message);
             });
           }
@@ -103,7 +88,7 @@ export class WebSocketService {
         this.isConnecting = false;
         this.handlers.forEach(handler => handler.onDisconnect?.());
         
-        // Otomatik yeniden bağlanma
+        // Auto reconnect if not manual disconnect
         if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.scheduleReconnect();
         }
@@ -128,7 +113,7 @@ export class WebSocketService {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Exponential backoff, max 30 seconds
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
     
     console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
     
@@ -137,25 +122,17 @@ export class WebSocketService {
     }, delay);
   }
 
-  public sendMessage(receiverId: number, content: string) {
+  public sendMessage(receiverId: number, content: string): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('❌ WebSocket is not connected, current state:', this.ws?.readyState);
-      
-      // Try to reconnect if not connecting already
+      console.error('❌ WebSocket is not connected');
       if (!this.isConnecting) {
-        console.log('🔄 Attempting to reconnect...');
         this.connect();
       }
-      
       return false;
     }
 
     try {
-      const message = {
-        receiverId,
-        content
-      };
-      
+      const message = { receiverId, content };
       this.ws.send(JSON.stringify(message));
       console.log('📤 Message sent:', message);
       return true;
@@ -166,9 +143,7 @@ export class WebSocketService {
   }
 
   public addHandler(handler: MessageHandler) {
-    // Prevent duplicate handlers
-    const exists = this.handlers.indexOf(handler) !== -1;
-    if (!exists) {
+    if (!this.handlers.includes(handler)) {
       this.handlers.push(handler);
     }
   }
@@ -180,15 +155,14 @@ export class WebSocketService {
     }
   }
 
+  public isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
   public disconnect() {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
-    }
-    
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
-      this.healthCheckInterval = null;
     }
     
     if (this.ws) {
@@ -196,58 +170,16 @@ export class WebSocketService {
       this.ws = null;
     }
     
-    // Clear all handlers
     this.handlers = [];
     this.reconnectAttempts = 0;
     this.isConnecting = false;
   }
 
-  // Method to be called on logout
   public logout() {
-    console.log('🔒 Logging out - closing WebSocket connection and clearing chat data');
+    console.log('🔒 Logging out - clearing all data');
     this.disconnect();
-    
-    // Clear chat store and user status
     chatStore.clear();
     userStatusService.clear();
-  }
-
-  private startHealthCheck() {
-    // Check connection every 30 seconds
-    this.healthCheckInterval = window.setInterval(() => {
-      if (!this.isConnected() && !this.isConnecting) {
-        console.log('🔄 Health check: Connection lost, attempting to reconnect...');
-        this.connect();
-      }
-    }, 30000);
-  }
-
-  public getConnectionState(): number {
-    return this.ws?.readyState ?? WebSocket.CLOSED;
-  }
-
-  public isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN;
-  }
-
-  public forceReconnect() {
-    console.log('🔄 Force reconnecting WebSocket...');
-    this.disconnect();
-    setTimeout(() => {
-      this.connect();
-    }, 1000);
-  }
-
-  public getConnectionStateText(): string {
-    if (!this.ws) return 'Not initialized';
-    
-    switch (this.ws.readyState) {
-      case WebSocket.CONNECTING: return 'Connecting';
-      case WebSocket.OPEN: return 'Connected';
-      case WebSocket.CLOSING: return 'Closing';
-      case WebSocket.CLOSED: return 'Closed';
-      default: return 'Unknown';
-    }
   }
 }
 

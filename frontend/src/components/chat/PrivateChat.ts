@@ -1,9 +1,8 @@
 import { getWebSocketService } from '../../lib/websocket.service';
 import { chatStore } from '../../lib/chat.service';
 import { getMe } from '../../lib/api';
-import { userStatusService } from '../../lib/user-status.service';
+import { createStatusBadge } from '../../lib/status-indicator';
 import type { ChatMessage, MessageHandler } from '../../lib/websocket.service';
-import type { UserStatusHandler } from '../../lib/user-status.service';
 
 interface CurrentUser {
   id: number;
@@ -25,30 +24,14 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
     return errorDiv;
   }
 
-  // Function to get status indicator for friend
-  function getFriendStatusIndicator(friendId: number, webSocketConnected: boolean) {
-    if (!webSocketConnected) {
-      return {
-        html: `<div class="w-2 h-2 bg-red-500 rounded-full"></div>Disconnected`,
-        className: 'text-sm text-red-600 flex items-center gap-1'
-      };
-    }
-
-    const isOnline = userStatusService.isUserOnline(friendId);
-    return {
-      html: `<div class="w-2 h-2 ${isOnline ? 'bg-green-500' : 'bg-gray-400'} rounded-full"></div>${isOnline ? 'Online' : 'Offline'}`,
-      className: `text-sm ${isOnline ? 'text-green-600' : 'text-gray-500'} flex items-center gap-1`
-    };
-  }
-
   // Function to update friend status in the header
   function updateFriendStatus() {
     const statusElement = modal.querySelector('#friend-status') as HTMLElement;
-    if (statusElement && friendId && webSocketService) {
-      const isWebSocketConnected = webSocketService.isConnected();
-      const status = getFriendStatusIndicator(friendId, isWebSocketConnected);
-      statusElement.innerHTML = status.html;
-      statusElement.className = status.className;
+    if (statusElement && friendId) {
+      // Clear existing content and add new status badge
+      statusElement.innerHTML = '';
+      const statusBadge = createStatusBadge(friendId);
+      statusElement.appendChild(statusBadge);
     }
   }
 
@@ -246,31 +229,8 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
       closeBtn.addEventListener('click', onClose);
     }
 
-    // Set up user status handler
-    const statusHandler: UserStatusHandler = {
-      onUserStatusChange: (changedUserId: number, _isOnline: boolean) => {
-        if (changedUserId === friendId) {
-          updateFriendStatus();
-        }
-      },
-      onUserListUpdate: () => {
-        updateFriendStatus();
-      }
-    };
-
-    userStatusService.addHandler(statusHandler);
-
     // Initial status update
     updateFriendStatus();
-
-    // Clean up handler when modal is closed
-    const originalOnClose = onClose;
-    if (closeBtn && originalOnClose) {
-      closeBtn.addEventListener('click', () => {
-        userStatusService.removeHandler(statusHandler);
-        originalOnClose();
-      });
-    }
 
     // Message input and send button
     const messageInput = modal.querySelector('#message-input') as HTMLInputElement;
@@ -320,7 +280,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
           }, 500);
         } else {
           // Show connection error and try to reconnect
-          console.log('❌ Failed to send message, connection status:', webSocketService?.getConnectionStateText());
+          console.log('❌ Failed to send message - WebSocket not connected');
           
           // Reset button immediately on error
           sendButton.disabled = false;
@@ -333,7 +293,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
           // Show error message to user
           const errorDiv = document.createElement('div');
           errorDiv.className = 'bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded-lg text-sm mt-2';
-          errorDiv.textContent = `Connection lost. Reconnecting... (${webSocketService?.getConnectionStateText()})`;
+          errorDiv.textContent = 'Connection lost. Reconnecting...';
           
           const chatContainer = modal.querySelector('#chat-messages');
           if (chatContainer) {
@@ -347,7 +307,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
           }
           
           // Try to force reconnect
-          webSocketService?.forceReconnect();
+          // WebSocket will handle reconnection automatically
           updateConnectionStatus(false);
         }
       };

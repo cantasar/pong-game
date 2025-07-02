@@ -17,6 +17,8 @@ export function MainLayout(user: { username: string; id?: number }, onLogout?: (
 
   // Initialize WebSocket service for this session
   const webSocketService = initWebSocketService();
+  
+  console.log('🚀 WebSocket service initialized for MainLayout');
 
   // Selected friend state
   let selectedFriend: string | null = null;
