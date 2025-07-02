@@ -1,12 +1,12 @@
-import { ProfileCard } from './ProfileCard';
-import { GameArea } from './GameArea';
-import { Tournament } from './Tournament';
-import { GeneralChat } from './GeneralChat';
-import { PrivateChat } from './PrivateChat';
-import { initWebSocketService } from '../services/websocket.service';
-import { chatStore } from '../services/chat.service';
-import { getMe } from '../api';
-import type { MessageHandler } from '../services/websocket.service';
+import { ProfileCard } from './profile/ProfileCard';
+import { GameArea } from './game/GameArea';
+import { Tournament } from './game/Tournament';
+import { GeneralChat } from './chat/GeneralChat';
+import { PrivateChat } from './chat/PrivateChat';
+import { initWebSocketService } from '../lib/websocket.service';
+import { chatStore } from '../lib/chat.service';
+import { getMe } from '../lib/api';
+import type { MessageHandler } from '../lib/websocket.service';
 
 export function MainLayout(user: { username: string; id?: number }, onLogout?: () => void): HTMLElement {
   const container = document.createElement('div');
@@ -69,13 +69,22 @@ export function MainLayout(user: { username: string; id?: number }, onLogout?: (
   // Get friend name by ID (you might need to implement this based on your friends list)
   const getFriendNameById = async (friendId: number): Promise<string> => {
     try {
-      // Try to get from API
-      const { getUserById } = await import('../api');
+      // First try to get from friends list in ProfileCard
+      const { getFriends } = await import('../lib/api');
+      const friends = await getFriends();
+      const friend = friends.find((f: any) => f.id === friendId);
+      if (friend) {
+        return friend.username;
+      }
+      
+      // If not in friends list, try getUserById
+      const { getUserById } = await import('../lib/api');
       const user = await getUserById(friendId);
-      return user.username || `User ${friendId}`;
+      console.log('getUserById response:', user); // Debug log
+      return user.username || `Friend ${friendId}`;
     } catch (error) {
       console.error('Error getting friend name:', error);
-      return `User ${friendId}`;
+      return `Friend ${friendId}`;
     }
   };
 
@@ -87,7 +96,7 @@ export function MainLayout(user: { username: string; id?: number }, onLogout?: (
     notification.className = 'fixed top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm z-50 animate-slide-in-right';
     notification.innerHTML = `
       <div class="flex items-start gap-3">
-        <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=${message.from}" 
+        <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(friendName)}" 
              class="w-10 h-10 rounded-full border border-gray-200" />
         <div class="flex-1 min-w-0">
           <p class="font-medium text-gray-900 text-sm">${friendName}</p>
@@ -166,7 +175,7 @@ export function MainLayout(user: { username: string; id?: number }, onLogout?: (
   window.addEventListener('beforeunload', handleUnload);
 
   // Profile card with friend selection callback
-  const profile = ProfileCard(user.username, user.id, onLogout, handleFriendSelect);
+  const profile = ProfileCard(user.username, onLogout, handleFriendSelect);
   leftSidebar.appendChild(profile);
 
   // Main content area - Full screen game

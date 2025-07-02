@@ -13,40 +13,62 @@ pong-game/
 │   │   ├── services/     # Business logic
 │   │   ├── middlewares/  # Custom middleware
 │   │   ├── sockets/      # WebSocket handlers
-│   │   └── schemas/      # Validation schemas
+│   │   ├── schemas/      # Validation schemas
+│   │   ├── auth/         # Authentication utilities
+│   │   ├── db/           # Database client
+│   │   └── handlers/     # Error handlers
 │   ├── prisma/           # Database schema and migrations
+│   │   ├── schema.prisma # Database schema
+│   │   ├── migrations/   # Database migrations
+│   │   └── dev.db        # SQLite database file
 │   └── package.json
 └── frontend/             # Vite + TypeScript Frontend
     ├── src/
     │   ├── components/   # UI Components
-    │   └── api.ts        # API client
+    │   │   ├── auth/     # Authentication components
+    │   │   ├── chat/     # Chat components
+    │   │   ├── game/     # Game components
+    │   │   └── profile/  # Profile components
+    │   └── lib/          # API clients and utilities
+    │       ├── api.ts    # Main API exports
+    │       ├── auth-api.ts    # Authentication API
+    │       ├── friends-api.ts # Friends API
+    │       ├── messages-api.ts # Messages API
+    │       ├── websocket.service.ts # WebSocket service
+    │       └── types.ts  # TypeScript type definitions
+    ├── public/           # Static assets
     └── package.json
 ```
 
 ## 🚀 Features
 
-- **User Authentication**: JWT-based authentication system
-- **Friend System**: Add/remove friends and friend requests
-- **Real-time Chat**: Private messaging between friends
-- **Game Management**: Multiplayer Pong game functionality
-- **Profile Management**: User profiles with stats
-- **RESTful API**: Well-documented API with Swagger
-- **Real-time Communication**: WebSocket support for live features
+- **User Authentication**: JWT-based authentication system with secure login/register
+- **Friend System**: Add/remove friends, send/accept/reject friend requests
+- **Real-time Chat**: Private messaging between friends with real-time updates
+- **User Profiles**: Profile management with avatar, wins/losses stats
+- **Database Management**: SQLite database with Prisma ORM and migrations
+- **RESTful API**: Well-structured API with proper error handling
+- **Real-time Communication**: WebSocket support for live chat features
+- **Component Architecture**: Modular frontend components for auth, chat, game, and profile
+- **Type Safety**: Full TypeScript support for better development experience
 
 ## 🛠️ Tech Stack
 
 ### Backend
 - **Framework**: Fastify (Node.js)
 - **Database**: SQLite with Prisma ORM
-- **Authentication**: JWT tokens
-- **Real-time**: Socket.IO
-- **Documentation**: Swagger/OpenAPI
+- **Authentication**: JWT tokens with @fastify/jwt
+- **Real-time**: Socket.IO and @fastify/websocket
+- **CORS**: @fastify/cors for cross-origin requests
+- **Security**: bcrypt for password hashing
+- **Development**: nodemon for auto-reload
 
 ### Frontend
 - **Build Tool**: Vite
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
-- **Architecture**: Component-based
+- **Architecture**: Component-based with modular structure
+- **API Client**: Organized API modules for different features
 
 ## 📋 Prerequisites
 
@@ -72,7 +94,7 @@ JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
 PORT=3000
 NODE_ENV=development
 
-# CORS Origins (comma-separated)
+# CORS Origins (automatically allows all localhost origins)
 ALLOWED_ORIGINS="http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
 ```
 
@@ -105,6 +127,9 @@ cd backend
 
 # Install dependencies
 npm install
+
+# Create environment variables file
+cp .env.example .env  # Edit the .env file with your settings
 
 # Setup database
 npx prisma generate
@@ -178,17 +203,45 @@ npm run preview
 
 ## 📚 API Documentation
 
-Once the backend is running, you can access the API documentation at:
-- **Swagger UI**: `http://localhost:3000/docs`
+The API includes the following main endpoints:
+
+### Authentication Routes (`/api/auth`)
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user profile
+
+### Friends Routes (`/api/friends`) 
+- `GET /api/friends` - Get user's friends list
+- `POST /api/friends/request` - Send friend request
+- `GET /api/friends/requests` - Get pending friend requests
+- `PUT /api/friends/requests/:id` - Accept/reject friend request
+- `GET /api/friends/user/:username` - Find user by username
+
+### Chat Routes (`/api/chat`)
+- `GET /api/chat/messages/:userId` - Get messages with specific user
+- `POST /api/chat/messages` - Send a message
+
+### User Routes (`/api/users`)
+- `GET /api/users/:id` - Get user by ID
+
+For detailed API documentation with request/response examples, refer to the individual route files in `backend/src/routes/`.
 
 ## 🎮 Usage
 
 1. **Start both servers** (backend and frontend)
 2. **Open your browser** and navigate to `http://localhost:5173`
 3. **Register a new account** or login with existing credentials
-4. **Add friends** using their usernames
-5. **Start chatting** with your friends in real-time
-6. **Play Pong games** with other users
+4. **Add friends** by searching usernames and sending friend requests
+5. **Accept friend requests** from other users
+6. **Start chatting** with your friends in real-time
+7. **View profiles** to see user stats (wins/losses)
+
+### Key Features Available:
+- **Real-time messaging** between friends
+- **Friend request system** with pending/accepted states
+- **User search** functionality
+- **Profile management** with avatar and stats
+- **Responsive design** that works on different screen sizes
 
 ## 🔧 Database Management
 
@@ -233,14 +286,23 @@ npm test
 2. **Database connection issues**
    - Ensure the DATABASE_URL in your `.env` file is correct
    - Run `npx prisma migrate dev` to apply migrations
+   - Check if the SQLite database file exists in `backend/prisma/dev.db`
 
 3. **CORS errors**
-   - Check that your frontend URL is included in the backend's CORS configuration
-   - Verify the ALLOWED_ORIGINS environment variable
+   - The backend is configured to allow all localhost origins automatically
+   - If you're still getting CORS errors, check the console for specific error messages
 
 4. **JWT authentication fails**
    - Make sure JWT_SECRET is set in your backend `.env` file
    - Clear browser localStorage and try logging in again
+
+5. **TypeScript compilation errors**
+   - Run `npm run build` in the frontend directory to check for TypeScript errors
+   - Make sure all dependencies are installed correctly
+
+6. **WebSocket connection issues**
+   - Ensure both servers are running
+   - Check browser console for WebSocket connection errors
 
 ### Reset Everything
 
@@ -256,7 +318,7 @@ npx prisma generate
 
 # Reset frontend  
 cd frontend
-rm -rf node_modules
+rm -rf node_modules dist
 npm install
 ```
 

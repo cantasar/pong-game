@@ -1,4 +1,4 @@
-import { UI_CONSTANTS } from '../constants';
+import { UI_CONSTANTS } from './constants';
 
 /**
  * Generate avatar URL for a given username

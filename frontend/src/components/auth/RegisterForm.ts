@@ -1,4 +1,4 @@
-import { registerApi } from '../api';
+import { registerApi } from '../../lib/api';
 
 export function RegisterForm(onSuccess: () => void, onSwitchToLogin: () => void): HTMLElement {
   const div = document.createElement('div');

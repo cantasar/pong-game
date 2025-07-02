@@ -1,4 +1,4 @@
-import { getToken } from '../api';
+import { getToken } from './api';
 import { chatStore } from './chat.service';
 import { userStatusService } from './user-status.service';
 import type { UserStatus } from './user-status.service';

@@ -1,9 +1,9 @@
-import { getWebSocketService } from '../services/websocket.service';
-import { chatStore } from '../services/chat.service';
-import { getMe } from '../api';
-import { userStatusService } from '../services/user-status.service';
-import type { ChatMessage, MessageHandler } from '../services/websocket.service';
-import type { UserStatusHandler } from '../services/user-status.service';
+import { getWebSocketService } from '../../lib/websocket.service';
+import { chatStore } from '../../lib/chat.service';
+import { getMe } from '../../lib/api';
+import { userStatusService } from '../../lib/user-status.service';
+import type { ChatMessage, MessageHandler } from '../../lib/websocket.service';
+import type { UserStatusHandler } from '../../lib/user-status.service';
 
 interface CurrentUser {
   id: number;
@@ -81,7 +81,7 @@ export function PrivateChat(selectedFriend?: string, selectedFriendId?: number, 
         } else {
           try {
             // Try to find friend in friends list or get by username
-            const friends = await import('../api').then(api => api.getFriends());
+            const friends = await import('../../lib/api').then(api => api.getFriends());
             const friend = friends.find((f: any) => f.username === selectedFriend);
             
             if (friend) {

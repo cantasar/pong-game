@@ -1,9 +1,9 @@
-import { getToken, getMe } from '../api';
-import { LoginForm } from './LoginForm';
-import { RegisterForm } from './RegisterForm';
+import { getToken, getMe } from '../lib/api';
+import { LoginForm } from './auth/LoginForm';
+import { RegisterForm } from './auth/RegisterForm';
 import { MainLayout } from './MainLayout';
-import { destroyWebSocketService } from '../services/websocket.service';
-import { chatStore } from '../services/chat.service';
+import { destroyWebSocketService } from '../lib/websocket.service';
+import { chatStore } from '../lib/chat.service';
 
 // Simple app state
 const state = {

@@ -1,4 +1,4 @@
-import { loginApi, setToken } from '../api';
+import { loginApi, setToken } from '../../lib/api';
 
 export function LoginForm(onSuccess: () => void, onSwitchToRegister: () => void): HTMLElement {
   const div = document.createElement('div');
