@@ -2,6 +2,7 @@ import { getToken } from './api';
 import { chatStore } from './chat.service';
 import { userStatusService } from './user-status.service';
 
+// Chat mesajı arayüzü
 export interface ChatMessage {
   from: number;
   to?: number;
@@ -11,6 +12,7 @@ export interface ChatMessage {
   status?: 'sent' | 'delivered' | 'error';
 }
 
+// Mesaj işleyici arayüzü
 export interface MessageHandler {
   onMessage: (message: ChatMessage) => void;
   onError?: (error: any) => void;
@@ -30,6 +32,7 @@ export class WebSocketService {
     this.connect();
   }
 
+  // WebSocket bağlantısı kurma
   private connect() {
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
       return;
@@ -39,7 +42,6 @@ export class WebSocketService {
     const token = getToken();
     
     if (!token) {
-      console.error('No token available for WebSocket connection');
       this.isConnecting = false;
       return;
     }
@@ -48,7 +50,6 @@ export class WebSocketService {
       this.ws = new WebSocket('ws://localhost:3000/ws', token);
       
       this.ws.onopen = () => {
-        console.log('✅ WebSocket connected successfully');
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.handlers.forEach(handler => handler.onConnect?.());
@@ -57,22 +58,19 @@ export class WebSocketService {
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('📨 WebSocket message received:', data);
           
           if (data.type === 'user_status') {
-            // Single user status update
-            console.log(`📡 Received user status update:`, data);
+            // Kullanıcı durumu güncelleme
             if (data.isOnline) {
               userStatusService.setOnline(data.userId, data.username);
             } else {
               userStatusService.setOffline(data.userId);
             }
           } else if (data.type === 'user_list') {
-            // Full user list update
-            console.log(`📋 Received user list update:`, data);
+            // Kullanıcı listesi güncelleme
             userStatusService.updateOnlineUsers(data.users);
           } else {
-            // Regular chat message
+            // Normal chat mesajı
             const message: ChatMessage = data;
             this.handlers.forEach(handler => {
               handler.onMessage(message);
@@ -84,29 +82,27 @@ export class WebSocketService {
       };
 
       this.ws.onclose = (event) => {
-        console.log('🔌 WebSocket disconnected', event.code, event.reason);
         this.isConnecting = false;
         this.handlers.forEach(handler => handler.onDisconnect?.());
         
-        // Auto reconnect if not manual disconnect
+        // Otomatik yeniden bağlanma
         if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.scheduleReconnect();
         }
       };
 
       this.ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
         this.isConnecting = false;
         this.handlers.forEach(handler => handler.onError?.(error));
       };
 
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
       this.isConnecting = false;
       this.scheduleReconnect();
     }
   }
 
+  // Yeniden bağlanma zamanlaması
   private scheduleReconnect() {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
@@ -115,16 +111,14 @@ export class WebSocketService {
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
     
-    console.log(`🔄 Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
-    
     this.reconnectTimeout = window.setTimeout(() => {
       this.connect();
     }, delay);
   }
 
+  // Mesaj gönderme
   public sendMessage(receiverId: number, content: string): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('❌ WebSocket is not connected');
       if (!this.isConnecting) {
         this.connect();
       }
@@ -134,20 +128,21 @@ export class WebSocketService {
     try {
       const message = { receiverId, content };
       this.ws.send(JSON.stringify(message));
-      console.log('📤 Message sent:', message);
       return true;
     } catch (error) {
-      console.error('❌ Error sending message:', error);
+      console.error('Error sending message:', error);
       return false;
     }
   }
 
+  // Mesaj işleyici ekleme
   public addHandler(handler: MessageHandler) {
     if (!this.handlers.includes(handler)) {
       this.handlers.push(handler);
     }
   }
 
+  // Mesaj işleyici kaldırma
   public removeHandler(handler: MessageHandler) {
     const index = this.handlers.indexOf(handler);
     if (index > -1) {
@@ -155,10 +150,12 @@ export class WebSocketService {
     }
   }
 
+  // Bağlantı durumunu kontrol etme
   public isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
   }
 
+  // Bağlantıyı kapatma
   public disconnect() {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
@@ -175,18 +172,18 @@ export class WebSocketService {
     this.isConnecting = false;
   }
 
+  // Kullanıcı çıkışı sırasında temizlik
   public logout() {
-    console.log('🔒 Logging out - clearing all data');
     this.disconnect();
     chatStore.clear();
     userStatusService.clear();
   }
 }
 
-// Global instance that will be managed by the app
+// Global WebSocket servisi
 export let webSocketService: WebSocketService | null = null;
 
-// Helper functions to manage the WebSocket service
+// WebSocket servisi başlatma
 export function initWebSocketService(): WebSocketService {
   if (webSocketService) {
     webSocketService.logout();
@@ -195,17 +192,19 @@ export function initWebSocketService(): WebSocketService {
   return webSocketService;
 }
 
+// WebSocket servisi alma
 export function getWebSocketService(): WebSocketService | null {
   return webSocketService;
 }
 
+// WebSocket servisi sonlandırma
 export function destroyWebSocketService(): void {
   if (webSocketService) {
     webSocketService.logout();
     webSocketService = null;
   }
   
-  // Also clear chat store and user status as a safety measure
+  // Güvenlik için tüm verileri temizle
   chatStore.clear();
   userStatusService.clear();
 }

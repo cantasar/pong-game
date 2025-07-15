@@ -1,82 +1,82 @@
 import { getUsersByIdsService } from './user.service.js';
 
+// Bağlı olan kullanıcıları tutacak Map
 const clients = new Map();
 
+// Yeni kullanıcı bağlantısı ekleme
 export function addClient(userId, socket) {
   clients.set(parseInt(userId), socket);
-  // Broadcast user status change to all clients
   broadcastUserStatusChange(parseInt(userId), true);
 }
 
+// Kullanıcı bağlantısını kaldırma
 export function removeClient(userId) {
   clients.delete(parseInt(userId));
-  // Broadcast user status change to all clients
   broadcastUserStatusChange(parseInt(userId), false);
 }
 
+// Kullanıcının socket bağlantısını getirme
 export function getClient(userId) {
   return clients.get(parseInt(userId));
 }
 
+// Belirli bir kullanıcıya mesaj gönderme
 export function broadcastToUser(userId, message) {
-    try{
-        const receiverSocket = clients.get(parseInt(userId));
-        console.log(`🔍 User ${userId} socket status:`, receiverSocket ? `readyState=${receiverSocket.readyState}` : 'not found');
-        
-        if (receiverSocket && receiverSocket.readyState === 1) {
-            receiverSocket.send(JSON.stringify(message));
-            console.log(`✅ Message successfully sent to user ${userId}`);
-            return true;
-        } else {
-            console.log(`❌ Cannot send to user ${userId}: ${!receiverSocket ? 'socket not found' : `socket readyState=${receiverSocket.readyState} (not OPEN)`}`);
-            return false;
-        }
-    }catch(error){
-        console.error(`❌ Error broadcasting to user ${userId}:`, error);
-        return false;
+  try {
+    const receiverSocket = clients.get(parseInt(userId));
+    
+    // Socket varsa ve açıksa mesaj gönder
+    if (receiverSocket && receiverSocket.readyState === 1) {
+      receiverSocket.send(JSON.stringify(message));
+      return true;
     }
+    return false;
+  } catch (error) {
+    console.error(`Error broadcasting to user ${userId}:`, error);
+    return false;
+  }
 }
 
+// İki kullanıcı arasındaki mesajı yayınlama
 export function broadcastMessage(senderId, receiverId, content, createdAt) {
-    console.log(`📡 Broadcasting message from ${senderId} to ${receiverId}`);
-    
-    // Send to receiver
-    const receiverResult = broadcastToUser(receiverId, {
-        from: senderId,
-        content,
-        createdAt,
-        isRead: true
-    });
-    console.log(`📨 Message sent to receiver (${receiverId}):`, receiverResult ? 'SUCCESS' : 'FAILED');
-    
-    // Send confirmation to sender (different format to avoid duplication)
-    const senderResult = broadcastToUser(senderId, {
-        type: 'message_sent',
-        to: receiverId,
-        content,
-        createdAt,
-        status: 'delivered'
-    });
-    console.log(`✅ Confirmation sent to sender (${senderId}):`, senderResult ? 'SUCCESS' : 'FAILED');
+  // Alıcıya mesaj gönder
+  broadcastToUser(receiverId, {
+    from: senderId,
+    content,
+    createdAt,
+    isRead: true
+  });
+  
+  // Gönderene onay mesajı
+  broadcastToUser(senderId, {
+    type: 'message_sent',
+    to: receiverId,
+    content,
+    createdAt,
+    status: 'delivered'
+  });
 }
 
+// Çevrimiçi kullanıcıları listeleme
 export function getOnlineUsers() {
   return Array.from(clients.keys());
 }
 
+// Kullanıcının çevrimiçi olup olmadığını kontrol etme
 export function isUserOnline(userId) {
   const socket = clients.get(parseInt(userId));
   return socket && socket.readyState === 1;
 }
 
+// Bağlı kullanıcı sayısını getirme
 export function getClientCount() {
   return clients.size;
 }
 
-// User status functions
+// Kullanıcı durumu değişikliğini tüm kullanıcılara yayınlama
 export async function broadcastUserStatusChange(userId, isOnline, username = null) {
   try {
-    // Get username if not provided
+    // Kullanıcı adını al (yoksa)
     if (!username) {
       const users = await getUsersByIdsService([parseInt(userId)]);
       username = users.length > 0 ? users[0].username : `User${userId}`;
@@ -90,9 +90,7 @@ export async function broadcastUserStatusChange(userId, isOnline, username = nul
       lastSeen: isOnline ? null : new Date().toISOString()
     };
 
-    console.log(`📡 Broadcasting user status change:`, statusMessage);
-
-    // Send to all connected clients
+    // Tüm bağlı kullanıcılara gönder
     clients.forEach((socket, connectedUserId) => {
       if (socket && socket.readyState === 1) {
         try {
@@ -107,6 +105,7 @@ export async function broadcastUserStatusChange(userId, isOnline, username = nul
   }
 }
 
+// Çevrimiçi kullanıcı listesini tüm kullanıcılara yayınlama
 export async function broadcastUserList() {
   try {
     const onlineUserIds = getOnlineUsers();
@@ -122,9 +121,7 @@ export async function broadcastUserList() {
       }))
     };
 
-    console.log(`📋 Broadcasting user list:`, userListMessage);
-
-    // Send to all connected clients
+    // Tüm bağlı kullanıcılara gönder
     clients.forEach((socket, connectedUserId) => {
       if (socket && socket.readyState === 1) {
         try {

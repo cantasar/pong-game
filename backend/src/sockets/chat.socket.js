@@ -5,30 +5,35 @@ import { addClient, removeClient, broadcastMessage, isUserOnline, broadcastUserL
 
 export default async function chatSocket(fastify) {
   fastify.get('/ws', { websocket: true }, async (connection, req) => {
-
     try {
+      // JWT token'ını WebSocket protokolünden al
       const token = req.headers['sec-websocket-protocol'];      
       if (!token) {
-        console.error('No token provided in WebSocket URL');
         connection.close();
         return;
       }
+      
+      // Token'ı doğrula
       let user;
       try {
         user = fastify.jwt.verify(token);
       } catch (err) {
-        console.error('Invalid JWT token:', err.message);
         connection.close();
         return;
       }
+      
       const userId = user.userId;
-      console.log(`🔌 User ${userId} connected to WebSocket`);
+      console.log(`User ${userId} connected to WebSocket`);
+      
+      // Kullanıcıyı bağlı kullanıcılar listesine ekle
       addClient(userId, connection);
 
-      // Send current user list to the newly connected user
+      // Mevcut kullanıcı listesini gönder
       setTimeout(() => {
         broadcastUserList();
-      }, 100); // Small delay to ensure connection is established
+      }, 100);
+      
+      // Okunmamış mesajları gönder
       try {
         const unreadMessages = await prisma.message.findMany({
           where: {
@@ -41,6 +46,7 @@ export default async function chatSocket(fastify) {
         });
 
         if (unreadMessages.length > 0) {
+          // Okunmamış mesajları gönder
           unreadMessages.forEach(msg => {
             connection.send(JSON.stringify({
               from: msg.senderId,
@@ -49,6 +55,8 @@ export default async function chatSocket(fastify) {
               isRead: false
             }));
           });
+          
+          // Mesajları okunmuş olarak işaretle
           const ids = unreadMessages.map(m => m.id);
           await prisma.message.updateMany({
             where: { id: { in: ids } },
@@ -58,51 +66,50 @@ export default async function chatSocket(fastify) {
       } catch (err) {
         console.error('Error fetching/updating unread messages:', err);
       }
+      
+      // Gelen mesajları işle
       connection.on('message', async messageRaw => {
         try {
           const { receiverId, content } = JSON.parse(messageRaw.toString());
-          console.log(`📨 Message received from user ${userId} to user ${receiverId}: "${content}"`);
           
+          // Arkadaşlık kontrolü
           const friend = await isFriendService(parseInt(userId), parseInt(receiverId));
-          console.log(`🤝 Friend check result:`, friend);
-          
           if (!friend) {
-            console.error('❌ User is not a friend');
             connection.send(JSON.stringify({
               error: 'User is not a friend'
             }));
             return;
           }
           
+          // Mesaj formatı kontrolü
           if (!receiverId || !content) {
-            console.error('❌ Invalid message format');
             connection.send(JSON.stringify({
               error: 'Invalid message format'
             }));
             return;
           }
           
+          // Mesajı veritabanına kaydet
           const newMessage = await sendMessageService(parseInt(userId), parseInt(receiverId), content);
-          console.log(`💾 Message saved to database:`, newMessage);
           
-          // Check if receiver is online before broadcasting
-          const isReceiverOnline = isUserOnline(parseInt(receiverId));
-          console.log(`🌐 Receiver ${receiverId} online status: ${isReceiverOnline}`);
-          
+          // Mesajı diğer kullanıcılara yayınla
           broadcastMessage(parseInt(userId), parseInt(receiverId), content, newMessage.createdAt);
-          console.log(`📡 Message broadcasted to users`);
 
         } catch (err) {
-          console.error('❌ Error processing message:', err);
+          console.error('Error processing message:', err);
           connection.send(JSON.stringify({
             error: 'Failed to send message'
           }));
         }
       });
+      
+      // Bağlantı kapandığında temizlik
       connection.on('close', () => {
         removeClient(userId);
         console.log(`User ${userId} disconnected`);
       });
+      
+      // Hata durumunda temizlik
       connection.on('error', (err) => {
         console.error(`WebSocket error for user ${userId}:`, err);
         removeClient(userId);
