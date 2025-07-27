@@ -1,7 +1,7 @@
-import { verifyJWT } from '../../middleware/auth.middleware.js';
 import userService from '../../user/service/user.service.js';
 import { isExistingFriendRequestService, getIncomingFriendRequestsService, postAcceptRequestService, isFriend, getIncomingFriendRequestsServiceById, getFriendsListServices} from '../service/friend.service.js';
 import { getSentRequestsServices, addFriendRequestService, deleteFriendServices, blockFriendServices, unblockFriendServices } from '../service/friend.service.js';
+
 export async function CreateFriendRequestController(request, reply) {
     const requesterId = request.user.id;
     const targetId = request.params.targetId;
@@ -9,16 +9,12 @@ export async function CreateFriendRequestController(request, reply) {
     if (!targetId || isNaN(targetId)) {
         return reply.code(400).send({ error: 'Invalid target user ID' });
     }
-    const user = await userService.findUserById(targetId);
-    if (!user) {
+    const existingUser = await userService.findUserById(targetId);
+    if (!existingUser) {
         return reply.code(404).send({ error: 'Target user not found' });
     }
     if (requesterId == targetId) {
         return reply.code(400).send({ error: 'You cannot send a friend request to yourself' });
-    }
-    const existingUser = await userService.findUserById(targetId);
-    if (!existingUser) {
-        return reply.code(404).send({ error: 'Target user not found' });
     }
     const existingRequest = await isExistingFriendRequestService(requesterId, targetId);
     if (existingRequest) {
