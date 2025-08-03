@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat Test</title>
+</head>
+<body>
+    <h1>WebSocket Chat Test</h1>
+    
+    <div>
+        <h3>Connection</h3>
+        <input type="text" id="token" placeholder="JWT Token" style="width: 300px;">
+        <button id="connect">Connect</button>
+        <button id="disconnect">Disconnect</button>
+        <div id="status">Disconnected</div>
+    </div>
+
+    <div>
+        <h3>My Profile</h3>
+        <div id="userProfile" style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">
+            <p>Connect to load profile...</p>
+        </div>
+    </div>
+
+    <div>
+        <h3>Send Friend Request</h3>
+        <input type="text" id="friendRequestInput" placeholder="Username">
+        <button id="sendFriendRequest">Send Friend Request</button>
+    </div>
+
+    <div>
+        <h3>Friend Requests</h3>
+        <div id="friendRequests" style="border: 1px solid #ccc; height: 150px; overflow-y: auto; padding: 10px; margin: 10px 0;">
+        </div>
+    </div>
+
+    <div>
+        <h3>Friends List</h3>
+        <div id="friendsList" style="border: 1px solid #ccc; height: 200px; overflow-y: auto; padding: 10px; margin: 10px 0;">
+        </div>
+    </div>
+    
+    <div>
+        <h3>Direct Message</h3>
+        <div id="selectedFriend" style="font-weight: bold; margin: 5px 0; color: blue;">Select a friend to start messaging</div>
+        <input type="number" id="receiverId" placeholder="Receiver ID" style="display: none;">
+        
+        <!-- DM Kutusu -->
+        <div id="dmContainer" style="display: none;">
+            <div id="dmHeader" style="background: #f0f0f0; padding: 10px; border: 1px solid #ccc; font-weight: bold;">
+                Chat with: <span id="dmFriendName"></span>
+                <button id="closeDm" style="float: right; background: red; color: white; border: none; padding: 5px 10px;">X</button>
+            </div>
+            <div id="dmMessages" style="border: 1px solid #ccc; height: 250px; overflow-y: auto; padding: 10px; background: white;">
+                <div style="text-align: center; color: gray;">Loading messages...</div>
+            </div>
+            <div id="dmInput" style="border: 1px solid #ccc; padding: 10px; background: #f9f9f9;">
+                <input type="text" id="dmMessageText" placeholder="Type your message..." style="width: 70%; padding: 8px;">
+                <button id="dmSendButton" style="width: 25%; padding: 8px; background: blue; color: white; border: none;">Send</button>
+            </div>
+        </div>
+    </div>
+    
+    <div>
+        <h3>All Messages (Debug)</h3>
+        <div id="messages" style="border: 1px solid #ccc; height: 200px; overflow-y: auto; padding: 10px; margin: 10px 0;">
+        </div>
+    </div>
+    
+    <script type="module" src="./dist/app.js"></script>
+</body>
+</html>

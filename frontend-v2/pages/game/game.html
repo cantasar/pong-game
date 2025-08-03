@@ -1,0 +1,29 @@
+<div class="h-screen bg-black flex flex-col items-center justify-center">
+  <div class="text-white text-center mb-4">
+    <h1 class="text-3xl font-bold mb-2">PONG</h1>
+    <div class="text-xl">
+      <span id="player1Score">0</span> - <span id="player2Score">0</span>
+    </div>
+  </div>
+  
+  <canvas id="pongCanvas" class="border-2 border-white" width="800" height="400"></canvas>
+  
+  <div class="mt-6 space-x-4">
+    <button id="startBtn" class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">
+      Start
+    </button>
+    <button id="pauseBtn" class="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600">
+      Pause
+    </button>
+    <button id="resetBtn" class="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600">
+      Reset
+    </button>
+    <button onclick="router.navigate('home')" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600">
+      Home
+    </button>
+  </div>
+  
+  <div class="text-white text-sm mt-4">
+    W/S - Player 1 | ↑/↓ - Player 2
+  </div>
+</div>

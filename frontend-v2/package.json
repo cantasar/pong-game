@@ -1,0 +1,22 @@
+{
+  "name": "pong-game-v2",
+  "version": "1.0.0",
+  "description": "Simple Pong Game with TypeScript",
+  "main": "dist/main.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./styles/input.css -o ./dist/output.css",
+    "dev": "npm run build:css && tsc && cp ./index.html ./dist/ && cp -r ./pages ./dist/ && cp ./favicon.ico ./dist/ && python3 -m http.server 8080 --directory dist",
+    "build": "npm run build:css && tsc && cp ./index.html ./dist/ && cp -r ./pages ./dist/ && cp ./favicon.ico ./dist/",
+    "serve": "python3 -m http.server 8080 --directory dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "tailwindcss": "^3.0.0",
+    "serve": "^14.0.0",
+    "concurrently": "^8.0.0",
+    "@types/babylonjs": "^2.3.31"
+  },
+  "dependencies": {
+    "babylonjs": "^8.20.0"
+  }
+}

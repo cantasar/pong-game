@@ -1,0 +1,19 @@
+{
+  "name": "websocket-test-app",
+  "version": "1.0.0",
+  "description": "A simple WebSocket test application using TypeScript.",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "python3 -m http.server 8081",
+    "dev": "tsc && python3 -m http.server 8081",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^4.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
