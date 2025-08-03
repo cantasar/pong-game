@@ -1,30 +1,20 @@
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: 'http://localhost:3000',
-  
-  
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.AUTH.LOGIN), { method: 'POST', body: JSON.stringify({...}) })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.AUTH.REGISTER), { method: 'POST', body: JSON.stringify({...}) })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.USER.ME), { headers: { Authorization: `Bearer ${token}` } })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.FRIENDS.LIST), { headers: { Authorization: `Bearer ${token}` } })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.FRIENDS.ADD(targetId)), { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.FRIENDS.ACCEPT(targetId)), { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.FRIENDS.REJECT(targetId)), { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.FRIENDS.BLOCK(id)), { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.FRIENDS.UNBLOCK(id)), { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.FRIENDS.REQUESTS.INCOMING), { headers: { Authorization: `Bearer ${token}` } })
-  // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.FRIENDS.REQUESTS.SENT), { headers: { Authorization: `Bearer ${token}` } })
-
 
   ENDPOINTS: {
     AUTH: {
+      // POST /auth/register
+      // Body: { username, email, password }
+      REGISTER: '/auth/register',
+
       // POST /auth/login
-      // Body: { email: string, password: string }
+      // Body: { email, password }
       LOGIN: '/auth/login',
 
-      // POST /auth/register
-      // Body: { username: string, email: string, password: string }
-      REGISTER: '/auth/register',
+      // GET /auth/me
+      // Headers: { Authorization: Bearer <token> }
+      ME: '/auth/me',
 
       // GET /auth/google
       // OAuth login redirect (no fetch needed from frontend)
@@ -33,44 +23,47 @@ export const API_CONFIG = {
 
     USER: {
       // GET /users/me
-      // Headers: { Authorization: 'Bearer <token>' }
-      ME: '/users/me'
+      // Headers: { Authorization: Bearer <token> }
+      ME: '/users/me',
+
+      // PUT /users/me
+      // Body: { username?, email?, avatar? }
+      // Headers: { Authorization: Bearer <token> }
+      UPDATE: '/users/me',
+
+      // GET /users/:username
+      // Function usage: getApiUrl(API_CONFIG.ENDPOINTS.USER.BY_USERNAME('can'))
+      BY_USERNAME: (username: string) => `/users/${username}`
     },
 
     FRIENDS: {
       // GET /friends
-      // Get user's friend list
-      // Example fetch: fetch(getApiUrl(API_CONFIG.ENDPOINTS.FRIENDS.LIST), { headers: { Authorization: `Bearer ${token}` } })
       LIST: '/friends',
 
       // POST /friends/add/:targetId
-      // No body — just path param and Authorization header
       ADD: (targetId: string) => `/friends/add/${targetId}`,
 
       // POST /friends/:targetId/accept
-      // Accept incoming request from targetId
       ACCEPT: (targetId: string) => `/friends/${targetId}/accept`,
 
-      // DELETE /friends/:targetId/reject
-      // Reject friend request or remove friend
+      // POST /friends/:targetId/reject
       REJECT: (targetId: string) => `/friends/${targetId}/reject`,
 
+      // DELETE /friends/:targetId/remove
+      REMOVE: (targetId: string) => `/friends/${targetId}/remove`,
+
       // POST /friends/:id/block
-      // Block user by ID
       BLOCK: (id: string) => `/friends/${id}/block`,
 
       // POST /friends/:id/unblock
-      // Unblock user by ID
       UNBLOCK: (id: string) => `/friends/${id}/unblock`,
 
       REQUESTS: {
         // GET /friends/requests/incoming
-        // Fetch list of incoming friend requests
         INCOMING: '/friends/requests/incoming',
 
-        // GET /friends/requests/send
-        // Fetch list of sent friend requests
-        SENT: '/friends/requests/send'
+        // GET /friends/requests/sent
+        SENT: '/friends/requests/sent'
       }
     }
   }

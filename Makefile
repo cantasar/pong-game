@@ -58,4 +58,8 @@ help:
 	@echo "\033[36m❓ make help     \033[0m- Show this help message"
 	@echo "\033[32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 
+re: fclean
+	@echo "\033[35m🔄 Rebuilding project...\033[0m"
+	@make all
+
 .PHONY: all backend frontend clean kill fclean help
