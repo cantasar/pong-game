@@ -2,10 +2,10 @@ import { getApiUrl, API_CONFIG } from '../../config.js';
 
 export async function init() {
   console.log('Login page loaded');
-  
+
   // Regular login form
   const form = document.getElementById('loginForm') as HTMLFormElement;
-  
+
   // Google login button
   const googleLoginBtn = document.getElementById('googleLoginBtn') as HTMLButtonElement;
 
@@ -17,7 +17,7 @@ export async function init() {
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     const email = (document.getElementById('email') as HTMLInputElement)?.value;
     const password = (document.getElementById('password') as HTMLInputElement)?.value;
 
@@ -41,8 +41,8 @@ export async function init() {
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         alert(`Login successful! Welcome ${data.user.username}!`);
-        
-        router.navigate('profile');
+
+        router.navigate('home');
       } else {
         throw new Error(data.message || 'Login failed');
       }

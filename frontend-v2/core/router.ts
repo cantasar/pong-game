@@ -5,7 +5,7 @@ class Router {
   constructor(container: HTMLElement) {
     this.container = container;
     this.setupBrowserNavigation();
-    this.loadPage('home'); // Başlangıçta home sayfası
+    this.loadPage('landing');
   }
 
   navigate(pageName: string) {
@@ -84,8 +84,8 @@ class Router {
             <h1 class="text-2xl font-bold text-red-600 mb-4">Error Loading Page</h1>
             <p class="text-gray-600 mb-4">Failed to load: ${pageName}</p>
             <p class="text-sm text-gray-500">${error}</p>
-            <button onclick="router.navigate('home')" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
-              Go Home
+            <button onclick="router.navigate('landing')" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+              Go To Landing
             </button>
           </div>
         </div>
