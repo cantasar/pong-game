@@ -2,7 +2,7 @@
 
 A modern multiplayer Pong game built with TypeScript, featuring real-time gameplay, tournaments, social features, and comprehensive monitoring.
 
-🎮 Play Live -> **[pong.cant.tr](https://pong.cant.tr)**
+🎮 Play Live -> **[thepong.co](https://thepong.co)**
 
 ## Overview
 
@@ -95,6 +95,7 @@ The application includes comprehensive monitoring using Prometheus for metrics c
 *Production-ready monitoring dashboard built with Grafana shows real-time system metrics, game statistics, user activity, and performance data. Custom metrics track game-specific events like match completions, user registrations, and system load.*
 
 The monitoring setup includes:
+
 - **System Metrics**: CPU, memory, disk usage via Node Exporter
 - **Application Metrics**: Custom game events, user actions, WebSocket connections
 - **Performance Tracking**: Response times, database queries, error rates
@@ -103,6 +104,7 @@ The monitoring setup includes:
 ## Technical Architecture
 
 ### Frontend Stack
+
 - **TypeScript**: Type-safe development with modern ES6+ features
 - **Vanilla TS**: No framework dependencies, custom component system for maximum control
 - **Babylon.js**: 3D graphics engine providing smooth gameplay rendering
@@ -111,6 +113,7 @@ The monitoring setup includes:
 - **Component Architecture**: Custom router and state management
 
 ### Backend Infrastructure
+
 - **Node.js + Fastify**: High-performance web server with plugin ecosystem
 - **SQLite**: Embedded database for development, easily scalable to PostgreSQL
 - **WebSocket Server**: Real-time game state synchronization
@@ -119,6 +122,7 @@ The monitoring setup includes:
 - **OAuth2**: Google authentication integration
 
 ### Security Implementation
+
 - **XSS Protection**: Input sanitization and output encoding throughout
 - **CSRF Protection**: Token-based request validation
 - **Rate Limiting**: API endpoint protection against abuse
@@ -127,6 +131,7 @@ The monitoring setup includes:
 - **Input Validation**: Server-side validation for all user inputs
 
 ### DevOps & Deployment
+
 - **Docker Containerization**: Multi-service architecture with isolated containers
 - **Docker Compose**: Service orchestration and networking
 - **Nginx**: Reverse proxy, SSL termination, and static file serving
@@ -160,18 +165,23 @@ make
 ## Technical Challenges Solved
 
 ### Real-time Synchronization
+
 Implemented custom WebSocket protocols to handle game state synchronization between multiple clients with conflict resolution and latency compensation.
 
 ### Security Architecture
+
 Built multi-layered security including XSS prevention, CSRF protection, input validation, and comprehensive authentication flows.
 
 ### Container Orchestration
+
 Configured Docker networking for service communication while maintaining security isolation and scalability.
 
 ### 3D Game Physics
+
 Integrated Babylon.js physics engine for realistic ball movement, collision detection, and smooth 60fps gameplay.
 
 ### Tournament Management
+
 Developed automated bracket generation, match scheduling, and progression tracking for competitive play.
 
 The application demonstrates enterprise-grade development practices while maintaining clean, maintainable code architecture suitable for production deployment.
